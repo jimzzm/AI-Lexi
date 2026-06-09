@@ -1,12 +1,45 @@
 # API 规范文档
 
-> 版本：2.0.0  
-> 最后更新：2026-06-09  
+> 版本：0.1.0
+> 最后更新：2026-06-10
 > 维护人：项目开发者
 
-## 1. 统一数据类型与请求/响应格式
+## 1. 项目架构
 
-为了屏蔽不同模型 API 的差异，所有模型适配器（adapter）都应遵循以下统一格式。
+AI Lexi 采用**动态提供商架构**，所有云端模型通过统一的 OpenAI 兼容适配器接入，Ollama 本地模型保持独立路径。
+
+```
+┌─────────────────────────────────────────────────┐
+│                    view.ts                       │
+│  对话 UI、工具调用解析、提供商路由、历史面板       │
+└──────────────┬──────────────────────┬────────────┘
+               │                      │
+     Ollama 路径 │           OpenAI 兼容路径 │
+               ▼                      ▼
+    ┌──────────────────┐  ┌──────────────────────────┐
+    │  api/ollama.ts   │  │  api/openai-compatible.ts │
+    │  原生 /api/chat   │  │  /chat/completions        │
+    │  XML 工具调用     │  │  原生 function calling    │
+    └──────────────────┘  └──────────────────────────┘
+               │                      │
+               ▼                      ▼
+    ┌──────────────────┐  ┌──────────────────────────┐
+    │  本地 Ollama      │  │  ProviderConfig 配置表    │
+    │  http://localhost │  │  DeepSeek / Kimi / Qwen  │
+    │                   │  │  GLM / MiniMax / 豆包    │
+    │                   │  │  小米 mimo               │
+    └──────────────────┘  └──────────────────────────┘
+```
+
+### 核心概念
+
+- **ProviderConfig**：每个云端提供商一个配置对象，定义 baseUrl、model、auth 方式、token 参数名等
+- **UnifiedResponse**：统一响应体，屏蔽各 API 差异
+- **ConversationHistory**：对话记录持久化，自动保存/加载
+
+---
+
+## 2. 统一数据类型
 
 ### Message 接口
 
@@ -14,37 +47,49 @@
 interface Message {
   role: "system" | "user" | "assistant" | "tool";
   content: string;
-  images?: string[];        // 图片 base64 数据（仅 Ollama 视觉模型）
+  images?: string[];        // 图片 base64（仅 Ollama 视觉模型）
   tool_name?: string;       // Ollama tool 消息专用
-  tool_call_id?: string;    // DeepSeek/Xiaomi tool 消息专用
-  tool_calls?: ToolCall[];  // DeepSeek/Xiaomi assistant 消息专用
+  tool_call_id?: string;    // OpenAI 兼容 API tool 消息专用
+  tool_calls?: ToolCall[];  // OpenAI 兼容 API assistant 消息专用
 }
 ```
 
-### 统一请求体
+### ProviderConfig 接口
 
-```json
-{
-  "messages": [
-    { "role": "system", "content": "你是一个有用的AI助手" },
-    { "role": "user", "content": "你好！" }
-  ],
-  "model": "llama3.2",
-  "options": {
-    "temperature": 0.7,
-    "max_tokens": 2000,
-    "stream": false
-  }
+```typescript
+interface ProviderConfig {
+  id: string;                    // "deepseek" | "xiaomi" | "kimi" | ...
+  name: string;                  // "DeepSeek" | "小米 mimo" | "Kimi"
+  enabled: boolean;              // 开关
+  apiKey: string;                // API Key
+  baseUrl: string;               // API 端点
+  model: string;                 // 模型名称
+  temperature: number;           // 采样温度 0~2
+  maxTokens: number;             // 最大生成 token 数
+  authType: "bearer" | "api-key";           // 认证方式
+  tokenParam: "max_tokens" | "max_completion_tokens";  // token 参数名
+  supportsVision: boolean;       // 是否支持图片
 }
 ```
 
-- `messages`：对话消息数组，支持 `system`、`user`、`assistant`、`tool` 四种角色。
-- `model`：模型名称（如 `llama3.2`、`deepseek-chat`）。
-- `options.temperature`：采样温度，范围 0~2，越高输出越随机。
-- `options.max_tokens`：最大生成 token 数。
-- `options.stream`：是否流式输出（第一版固定为 `false`）。
+### ToolCall 接口
 
-### 统一响应体（成功）
+```typescript
+interface ToolCall {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+```
+
+---
+
+## 3. 统一响应体
+
+### 成功
 
 ```json
 {
@@ -55,59 +100,47 @@ interface Message {
     "completion_tokens": 15,
     "total_tokens": 35
   },
-  "model": "llama3.2"
+  "model": "deepseek-v4-flash",
+  "toolCalls": []
 }
 ```
 
-- `success`：请求是否成功。
-- `content`：AI 回复的纯文本内容。
-- `usage`：token 使用统计（可选，但建议提供）。
-- `model`：实际使用的模型名称。
+- `toolCalls`：工具调用时返回，格式同 OpenAI 原生 tool_calls
 
-工具调用场景下，响应还会包含：
-
-```json
-{
-  "success": true,
-  "content": "",
-  "toolCalls": [
-    { "id": "call_1", "type": "function", "function": { "name": "read_file", "arguments": "{\"path\":\"note.md\"}" } }
-  ],
-  "model": "qwen2.5:7b"
-}
-```
-
-### 统一响应体（失败）
+### 失败
 
 ```json
 {
   "success": false,
   "error": {
     "code": "API_ERROR",
-    "message": "详细的错误描述",
-    "details": {}
+    "message": "详细的错误描述"
   }
 }
 ```
 
 常见错误码：
-- `NETWORK_ERROR`：网络连接失败
-- `AUTH_ERROR`：认证失败（API Key 无效）
-- `RATE_LIMIT`：请求频率过高
-- `MODEL_NOT_FOUND`：模型不存在
-- `TIMEOUT`：请求超时
-- `UNKNOWN_ERROR`：其他未知错误
+
+| 错误码 | 说明 |
+|--------|------|
+| `NETWORK_ERROR` | 网络连接失败 |
+| `AUTH_ERROR` | API Key 无效（401） |
+| `MODEL_NOT_FOUND` | 模型或端点不存在（404） |
+| `RATE_LIMIT` | 请求频率过高（429） |
+| `TIMEOUT` | 请求超时 |
+| `API_ERROR` | API 返回的其他错误 |
+| `UNKNOWN_ERROR` | 其他未知错误 |
 
 ---
 
-## 2. Ollama API 格式
+## 4. Ollama API 格式
 
-Ollama 是本地运行的模型，无需 API Key，默认监听 `http://localhost:11434`。
+Ollama 使用原生 `/api/chat` 协议，**不兼容 OpenAI 格式**。
 
-- **接口**：`POST /api/chat`
-- **完整端点**：`http://localhost:11434/api/chat`
+- **端点**：`POST {baseUrl}/api/chat`
+- **认证**：无（本地服务）
 
-### 请求体（Ollama 原生格式）
+### 请求体
 
 ```json
 {
@@ -125,341 +158,203 @@ Ollama 是本地运行的模型，无需 API Key，默认监听 `http://localhos
 }
 ```
 
-**字段说明**：
+### 图片消息
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `model` | string | 模型名称，必须与 `ollama list` 显示的完全一致 |
-| `messages` | array | 对话消息，角色支持 `system`/`user`/`assistant`/`tool` |
-| `stream` | boolean | 设为 `false`（第一版不支持流式） |
-| `options.temperature` | number | 采样温度，默认 0.8 |
-| `options.top_p` | number | 核采样参数，默认 0.9 |
-| `options.num_ctx` | number | 上下文窗口大小（token 数），默认 8192，可在设置页滑块调整（2048~131072） |
-| `options.num_predict` | number | **工具调用场景不要设置**，否则会截断 `<tool_call>` XML |
-
-**图片消息**：视觉模型的 user 消息可附加 `images` 字段（base64 字符串数组）：
+Ollama 视觉模型在 user 消息中传 `images` 字段（base64 数组）：
 
 ```json
 { "role": "user", "content": "分析这张图片", "images": ["iVBORw0KGgo..."] }
 ```
 
-Ollama 原生 API 通过 `images` 字段直接传递 base64；`/v1` 端点使用 content array 格式：
-
-```json
-{ "role": "user", "content": [{ "type": "text", "text": "分析" }, { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }] }
-```
-
-### 响应体（Ollama 原生格式）
+### 响应体
 
 ```json
 {
   "model": "qwen2.5:7b",
-  "created_at": "2026-06-06T12:00:00.000Z",
-  "message": {
-    "role": "assistant",
-    "content": "你好！今天有什么可以帮助你的？"
-  },
+  "message": { "role": "assistant", "content": "你好！" },
   "done": true,
-  "total_duration": 2500000000,
-  "load_duration": 5000000,
   "prompt_eval_count": 10,
   "eval_count": 20
 }
 ```
 
-**转换为统一响应体**：
+## 5. OpenAI 兼容 API 格式（统一适配器）
+
+所有云端提供商（DeepSeek、Kimi、GLM、Qwen、MiniMax、豆包、小米 mimo）共用 `api/openai-compatible.ts`，差异仅由 ProviderConfig 控制。
+
+- **端点**：`POST {baseUrl}/chat/completions`
+- **认证**：`Authorization: Bearer {apiKey}`（大多数）或 `api-key: {apiKey}`（小米）
+
+### 请求体
 
 ```json
 {
-  "success": true,
-  "content": "你好！今天有什么可以帮助你的？",
-  "usage": {
-    "prompt_tokens": 10,
-    "completion_tokens": 20,
-    "total_tokens": 30
-  },
-  "model": "qwen2.5:7b"
-}
-```
-
-**注意事项**：
-- 默认 Ollama 服务地址为 `http://localhost:11434`，用户可在插件设置中修改。
-- 如果 Ollama 未运行，请求会失败，应返回 `NETWORK_ERROR`。
-- 模型名称大小写敏感，建议提供下拉选择或自动从 `ollama list` 获取。
-
----
-
-## 3. DeepSeek API 格式
-
-DeepSeek 提供云端 API，需要有效的 API Key。
-
-- **接口**：`POST /chat/completions`
-- **完整端点**：`https://api.deepseek.com/v1/chat/completions`
-- **认证**：`Authorization: Bearer YOUR_API_KEY`
-
-### 请求体（DeepSeek 原生格式）
-
-```json
-{
-  "model": "deepseek-chat",
+  "model": "deepseek-v4-flash",
   "messages": [
     { "role": "system", "content": "你是一个有用的AI助手" },
     { "role": "user", "content": "你好" }
   ],
   "temperature": 1.0,
   "max_tokens": 4000,
-  "top_p": 1.0,
+  "top_p": 0.9,
   "stream": false,
-  "response_format": { "type": "text" }
+  "tools": [],
+  "tool_choice": "auto"
 }
 ```
 
-**字段说明**：
+- `max_tokens` 还是 `max_completion_tokens` 由 `ProviderConfig.tokenParam` 决定（小米使用后者）
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `model` | string | 固定为 `deepseek-chat` 或 `deepseek-coder` |
-| `messages` | array | 对话消息，角色支持 `system`/`user`/`assistant` |
-| `temperature` | number | 采样温度，范围 0~2，默认 1.0 |
-| `max_tokens` | number | 最大生成 token 数，默认 4000 |
-| `top_p` | number | 核采样参数，默认 1.0 |
-| `stream` | boolean | 设为 `false`（第一版不支持流式） |
-| `response_format` | object | 可指定 `{"type": "json_object"}` 强制输出 JSON |
+### 原生 tool_calls
 
-### 响应体（DeepSeek 原生格式）
+OpenAI 兼容 API 通过原生 `message.tool_calls` 字段支持工具调用：
 
 ```json
 {
-  "id": "chatcmpl-xxxxxxxx",
-  "object": "chat.completion",
-  "created": 1700000000,
-  "model": "deepseek-chat",
-  "choices": [
-    {
-      "index": 0,
-      "message": {
-        "role": "assistant",
-        "content": "你好！今天有什么可以帮助你的？"
-      },
-      "finish_reason": "stop"
+  "choices": [{
+    "message": {
+      "content": null,
+      "tool_calls": [{
+        "id": "call_xxx",
+        "type": "function",
+        "function": {
+          "name": "read_file",
+          "arguments": "{\"path\":\"note.md\"}"
+        }
+      }]
     }
-  ],
-  "usage": {
-    "prompt_tokens": 10,
-    "completion_tokens": 20,
-    "total_tokens": 30
-  }
-}
-```
-
-**转换为统一响应体**：
-
-```json
-{
-  "success": true,
-  "content": "你好！今天有什么可以帮助你的？",
-  "usage": {
-    "prompt_tokens": 10,
-    "completion_tokens": 20,
-    "total_tokens": 30
-  },
-  "model": "deepseek-chat"
-}
-```
-
-**注意事项**：
-- API Key 由用户在插件设置中输入，**严禁硬编码**。
-- 请求超时建议设置为 60 秒，避免网络波动。
-- 如果 API Key 无效，应返回 `AUTH_ERROR`。
-- 官方文档：[DeepSeek API 文档](https://platform.deepseek.com/api-docs/)
-
----
-
-## 4. 添加新模型的步骤
-
-当需要支持新模型（如智谱 ChatGLM、通义千问、Moonshot 等）时，按以下步骤操作：
-
-1. **创建适配器文件**：在 `src/api/` 目录下新建 `{model_name}.ts`。
-2. **实现核心函数**：
-   ```typescript
-   import { Message, UnifiedResponse } from "../types";
-
-   export interface XxxConfig {
-     baseUrl: string;
-     model: string;
-     temperature?: number;
-     maxTokens?: number;
-     signal?: AbortSignal;
-   }
-
-   export async function sendRequest(
-     messages: Message[],
-     config: XxxConfig
-   ): Promise<UnifiedResponse> {
-     // 1. 将统一 Message[] 转换为厂商原生请求体
-     // 2. 发送 HTTP 请求（支持 AbortSignal 取消）
-     // 3. 将原生响应转换为 UnifiedResponse
-     // 4. 读取错误响应体 error 字段获取详细错误
-   }
-   ```
-3. **在设置界面添加模型选项**：在 `src/settings.ts` 中添加配置项，让用户选择模型、配置 API Key 和端点地址。参考已有的 `OllamaChatSettings` 接口和 `DEFAULT_SETTINGS`。
-4. **在 `src/view.ts` 添加提供商切换**：在 `refreshProviderOptions()` 中添加新选项，注意 `dataset.provider` 映射回调。
-5. **在 `view.ts` 的 `buildSystemPrompt()` 中添加工具规则**：如果新提供商使用原生 tool_calls，用 `getStandardToolRules()`；如果使用文本解析（XML），参考 `getOllamaToolRules()`。
-6. **更新本 API 文档**：添加新提供商的请求/响应示例和注意事项。
-7. **测试**：手动测试多轮对话场景，确保历史消息正确传递。注意测试工具调用路径和错误处理。
-
----
-
-## 5. 多轮对话的历史消息格式
-
-所有模型适配器必须能够正确处理数组形式的历史消息，例如：
-
-```json
-{
-  "messages": [
-    { "role": "user", "content": "我叫张三" },
-    { "role": "assistant", "content": "你好张三！" },
-    { "role": "user", "content": "我叫什么名字？" }
-  ]
-}
-```
-
-**要求**：
-- 保持消息顺序：从最早到最新。
-- 确保角色名称统一为 `system` / `user` / `assistant`。
-- 如果厂商使用不同角色名（如 `bot`），适配器需做转换。
-- 可选：限制最大历史轮数（如保留最近 10 轮），防止上下文溢出。
-
----
-
-## 6. 错误处理示例
-
-以下是一个典型的错误响应转换（参考 `src/api/ollama.ts`）：
-
-```typescript
-try {
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(requestBody),
-    signal: config.signal,
-  });
-
-  if (!response.ok) {
-    if (response.status === 404) {
-      return { success: false, error: { code: 'MODEL_NOT_FOUND', message: '模型不存在' } };
-    }
-    // 读取 Ollama 错误详情（如 OOM 等）
-    let detail = `HTTP ${response.status}`;
-    try {
-      const errBody = await response.json();
-      if (errBody.error) detail += `: ${errBody.error}`;
-    } catch {}
-    return { success: false, error: { code: 'API_ERROR', message: detail } };
-  }
-  // ... 解析成功响应
-} catch (err: any) {
-  if (err.code === 'ECONNREFUSED' || err.message?.includes('ECONNREFUSED')) {
-    return { success: false, error: { code: 'NETWORK_ERROR', message: '无法连接到服务' } };
-  }
-  if (err.name === 'AbortError' || err.message?.includes('timeout')) {
-    return { success: false, error: { code: 'TIMEOUT', message: '请求超时' } };
-  }
-  return { success: false, error: { code: 'UNKNOWN_ERROR', message: err.message } };
+  }]
 }
 ```
 
 ---
 
-## 7. 工具调用
+## 6. 工具调用流程
 
-插件支持两种工具调用路径，取决于提供商。
+### Ollama 路径（XML 文本解析）
 
-### DeepSeek / 小米 mimo 路径（原生 tool_calls）
+1. `sendRequestWithTools` 调用 API
+2. 若无原生 tool_calls，`parseToolCallsFromText()` 从文本提取 `<tool_call>` XML
+3. JSON 解析失败时 fallback 到手动字段提取（处理未转义双引号）
+4. 执行工具后结果以 `role: "tool"` 加入历史
+5. **write_file 后立即 break**（防止模型循环调用）
+6. read_file 后继续调 API 让模型看到结果
 
-API 返回 `message.tool_calls` 数组，流程：
+### OpenAI 兼容路径（原生 function calling）
 
-1. 将 assistant 消息（含 `tool_calls`）加入对话历史
-2. 执行工具，结果以 `role: "tool"` 消息加入历史（带 `tool_call_id`）
-3. 再次调用 API，模型根据工具结果生成回复
-
-### Ollama 路径（文本解析 XML）
-
-Ollama 部分模型（如 qwen2.5、gemma 等）不支持原生 function calling，通过 `<tool_call>` XML 标签在文本中标记工具调用：
-
-```
-<tool_call>
-{"name":"read_file","content":"读取笔记","path":"note.md"}
-</tool_call>
-```
-
-流程：
-
-1. `sendRequestWithTools` 调用 Ollama API（带 tools 参数，部分模型会返回原生 tool_calls）
-2. 若无原生 tool_calls，用 `parseToolCallsFromText()` 从文本提取 `<tool_call>` JSON
-3. JSON 解析失败时（如 content 中含未转义双引号），fallback 到手动字段提取
-4. 执行工具后，结果以 `role: "tool"` 加入历史
-5. 若执行了 `write_file`，立即停止循环（否则模型会反复调用）
-6. 若仅执行 `read_file`，继续调 API 让模型看到结果
-
-**工具失败降级**：如果 `sendRequestWithTools` 返回错误（如模型不支持工具），会自动降级为不带工具的纯文本请求。
+1. API 返回 `message.tool_calls` 数组
+2. 将 assistant 消息（含 tool_calls）加入历史
+3. `handleToolCalls` 执行工具
+4. 结果以 `role: "tool"` + `tool_call_id` 加入历史
+5. 再次调用 API，模型根据工具结果生成回复
 
 ### 工具定义
 
-当前定义了两个工具：
-
 | 工具名 | 说明 | 参数 |
 |--------|------|------|
-| `read_file` | 读取笔记文件内容 | `path: string` |
+| `read_file` | 读取笔记文件 | `path: string` |
 | `write_file` | 写入/覆盖笔记文件 | `path: string`, `content: string` |
 
 ---
 
-## 8. 视觉模型支持
+## 7. 视觉模型支持
 
-仅 Ollama 提供商支持。通过 `Message.images` 字段传递图片 base64 数据。
+当前仅 Ollama 提供商支持。
 
-### 图片提取流程
+- 通过 `Message.images` 传 base64 图片数据
+- `extractImagesFromNote()` 解析笔记中的 `![[image.png]]` 和 `![](path)` 语法
+- `fileToBase64()` 读取文件转 base64（单文件 ≤20MB，每次 ≤5 张）
+- 设置中的 `imagePromptTemplate` 可自定义分析提示词
 
-1. `extractImagesFromNote()` 解析当前笔记中的 `![[image.png]]` 和 `![](path)` 语法
-2. 通过 `metadataCache.getFirstLinkpathDest()` 解析 wiki 链接
-3. `fileToBase64()` 读取文件并转为 base64（单文件 ≤20MB，每次 ≤5 张）
-4. 图片数据通过 `addUserMessage(content, images)` 传递给 ConversationManager
+---
 
-### API 层转换
+## 8. 提供商配置表
 
-- **Ollama 原生 API**（`/api/chat`）：`images` 字段直接放 base64 字符串数组
-- **Ollama V1 API**（`/v1/chat/completions`）：content 数组格式，`type: "image_url"` + `data:image/png;base64,...`
+| 提供商 | ID | 默认模型 | 认证方式 | token 参数 | 视觉 |
+|--------|----|---------|---------|-----------|------|
+| DeepSeek | deepseek | deepseek-v4-flash | bearer | max_tokens | ❌ |
+| 小米 mimo | xiaomi | mimo-v2.5 | api-key | max_completion_tokens | ❌ |
+| Kimi | kimi | kimi-for-coding | bearer | max_tokens | ❌ |
+| Qwen | qwen | qwen-plus | bearer | max_tokens | ✅ |
+| GLM | glm | glm-5.1 | bearer | max_tokens | ✅ |
+| MiniMax | minimax | MiniMax-M3 | bearer | max_tokens | ❌ |
+| 豆包 | doubao | ep-xxxxxxxx-xxxxxx | bearer | max_tokens | ❌ |
 
-### 配置
+注：豆包需要先在火山引擎控制台创建推理接入点，使用 `ep-xxxxxx` ID 而非模型名。
 
-- `ollamaNumCtx`：上下文窗口大小，视觉模型建议 4096~8192（过高会大量占用显存）
-- `imagePromptTemplate`：图片分析的系统提示词模板，在设置页自定义
+---
 
-### 显存管理
+## 9. 对话历史持久化
 
-- 切换模型 / 新建标签页 / 新建对话时自动卸载旧模型（调用 `/api/generate` + `keep_alive: 0`）
-- `unloadModel()` 超时 10 秒，静默失败不影响用户操作
+使用 Obsidian vault adapter 存储到 `{plugin_dir}/conversations.json`。
 
-| 配置项 | 说明 | 默认值 |
-|--------|------|--------|
+### ConversationRecord
+
+```typescript
+interface ConversationRecord {
+  id: string;             // 唯一 ID
+  title: string;          // 自动生成标题（取第一条用户消息前 50 字）
+  provider: string;       // 使用的提供商
+  model: string;          // 使用的模型
+  createdAt: number;      // 创建时间
+  updatedAt: number;      // 最后更新时间
+  messages: Message[];    // 对话消息
+}
+```
+
+### 存储策略
+
+- 自动保存：切换标签页、发送消息、关闭对话时
+- 图片数据：`images` 字段在保存时剥离（base64 体积过大）
+- 轮数限制：`maxHistoryLength` 配置保留的最大轮数
+- 历史面板：侧边栏内可加载、删除历史对话
+
+---
+
+## 10. 配置项
+
+### Ollama 配置
+
+| 字段 | 说明 | 默认值 |
+|------|------|--------|
 | `ollamaBaseUrl` | Ollama 服务地址 | `http://localhost:11434` |
-| `ollamaModel` | Ollama 模型名 | `qwen2.5:7b` |
-| `ollamaTemperature` | Ollama 采样温度 | 0.8 |
-| `ollamaMaxTokens` | Ollama 最大生成 token 数 | 2000 |
-| `ollamaNumCtx` | Ollama 上下文窗口（滑块 2048~131072） | 8192 |
-| `deepseekApiKey` | DeepSeek API Key | 空（用户必须填写） |
-| `deepseekBaseUrl` | DeepSeek API 端点 | `https://api.deepseek.com/v1` |
-| `deepseekModel` | DeepSeek 模型名 | `deepseek-chat` |
-| `deepseekTemperature` | DeepSeek 采样温度 | 1.0 |
-| `deepseekMaxTokens` | DeepSeek 最大生成 token 数 | 4000 |
-| `xiaomiApiKey` | 小米 mimo API Key | 空（用户必须填写） |
-| `xiaomiBaseUrl` | 小米 mimo API 端点 | `https://api.xiaomimimo.com/v1` |
-| `xiaomiModel` | 小米 mimo 模型名 | `mimo-v2.5` |
-| `xiaomiTemperature` | 小米 mimo 采样温度 | 0.7 |
-| `xiaomiMaxTokens` | 小米 mimo 最大生成 token 数 | 4000 |
-| `systemPrompt` | 系统提示词（定义 AI 角色行为） | 见默认值 |
-| `imagePromptTemplate` | 图片分析提示词模板（仅 Ollama 视觉模型） | 空（不启用） |
+| `ollamaModel` | 模型名称 | `qwen2.5:7b` |
+| `ollamaTemperature` | 采样温度 0~2 | 0.8 |
+| `ollamaMaxTokens` | 最大生成 token 数 | 2000 |
+| `ollamaNumCtx` | 上下文窗口（滑块 2048~131072） | 8192 |
+
+### 云端提供商配置
+
+通过 `providers: Record<string, ProviderConfig>` 存储，每个提供商独立配置 apiKey、baseUrl、model、temperature、maxTokens。
+
+### 通用配置
+
+| 字段 | 说明 | 默认值 |
+|------|------|--------|
+| `systemPrompt` | 系统提示词 | 见默认值（AI Lexi 角色定义） |
+| `imagePromptTemplate` | 图片分析提示词模板 | 空（不启用） |
 | `maxHistoryLength` | 最大保留对话轮数 | 20 |
 | `requestTimeout` | API 请求超时（毫秒） | 60000 |
+
+---
+
+## 11. 错误处理示例
+
+```typescript
+// 参考 api/openai-compatible.ts
+if (!response.ok) {
+  if (response.status === 401)
+    return { success: false, error: { code: "AUTH_ERROR", message: "API Key 无效" } };
+  if (response.status === 404)
+    return { success: false, error: { code: "MODEL_NOT_FOUND", message: "API 地址或模型不存在" } };
+  if (response.status === 429)
+    return { success: false, error: { code: "RATE_LIMIT", message: "请求过于频繁" } };
+  // 读取响应体中的 error 字段获取详细错误
+  const errBody = await response.json();
+  return { success: false, error: { code: "API_ERROR", message: errBody.error?.message || `HTTP ${response.status}` } };
+}
 ```
+
+## 12. LexiTab 多标签页
+
+支持最多 3 个对话标签页同时打开，共享导航栏，每个标签页独立维护对话状态和 provider 选择。
