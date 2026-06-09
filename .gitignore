@@ -8,6 +8,7 @@ main.js.map
 
 # 但允许 Releases 目录下的构建产物（给用户下载用）
 !Releases/
+!Releases/main.js
 dist/
 
 # Environment
