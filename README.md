@@ -4,11 +4,6 @@
 
 本项目的 UI 和交互设计参考自 [Claudian](https://github.com/YishenTu/claudian)，感谢原作者的开源工作。
 
-## 致谢
-
-- [Claudian](https://github.com/YishenTu/claudian) — 参考其 UI 设计与交互模式（MIT 协议）
-- [Obsidian](https://obsidian.md) — 强大的插件 API
-
 ## 支持的模型
 
 | 提供商 | 默认模型 | 工具调用 | 视觉/图片 |
@@ -63,3 +58,8 @@ npm run build  # 生产构建
 ## 许可
 
 MIT License。详见 [LICENSE](LICENSE) 文件。
+
+## Acknowledgements
+
+- [Claudian](https://github.com/YishenTu/claudian) — UI design and interaction patterns
+- [Obsidian](https://obsidian.md) — Powerful plugin API
