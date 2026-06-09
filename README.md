@@ -1,3 +1,49 @@
-# AI-Lexi
-一个用于obsidian的AI助手，支持本地ollama模型与中国模型，再也没有封号焦虑了。
-An AI Assistant for Obsidian that supports Chinese models and local Ollama integrations.
+# Ollama Chat - Obsidian AI 对话插件
+
+在 Obsidian 侧边栏中与 AI 进行多轮对话，支持本地 Ollama 和国内云 API。
+项目参考自 [Claudian](https://github.com/your-repo/claudian)（MIT 协议）。
+
+## 支持的模型
+
+| 提供商 | 模型 | 工具调用 | 视觉/图片 |
+|--------|------|----------|-----------|
+| Ollama | 本地模型（如 Qwen、Gemma） | ✅ 原生 + 文本解析 | ✅ 视觉模型 |
+| DeepSeek | deepseek-chat | ✅ 原生 function calling | ❌ |
+| 小米 mimo | mimo-v2.5 | ✅ 文本解析 | ❌ |
+
+## 安装
+
+1. 将插件文件夹复制到 `<vault>/.obsidian/plugins/obsidian-ollama-chat/`
+2. 在 Obsidian 设置 → 第三方插件中启用
+3. 在插件设置中配置 API 地址和密钥
+
+## 功能
+
+- 多轮对话，自动携带上下文
+- 工具调用：读取和写入笔记文件
+- 自动加载当前笔记上下文
+- 支持 CLAUDE.md 自定义指令
+- **视觉模型**：提取笔记中的图片传给 Ollama 视觉模型分析
+- **显存管理**：切换模型/新对话时自动释放显存
+- 中文界面
+
+## 配置
+
+- Ollama 上下文窗口（num_ctx）可调滑块（2048~131072）
+- 图片分析提示词模板（用于视觉模型）
+- 系统提示词自定义
+
+## 开发
+
+```bash
+npm install
+npm run dev    # 开发模式（监听文件变化）
+npm run build  # 生产构建
+```
+
+## 技术栈
+
+- TypeScript + esbuild
+- Obsidian Plugin API
+- OpenAI 兼容格式（DeepSeek、小米）
+- Ollama 原生 API
