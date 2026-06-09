@@ -5,6 +5,9 @@ npm-debug.log*
 # Build output
 main.js
 main.js.map
+
+# 但允许 Releases 目录下的构建产物（给用户下载用）
+!Releases/
 dist/
 
 # Environment
