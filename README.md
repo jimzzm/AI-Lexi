@@ -1,15 +1,20 @@
-# Ollama Chat - Obsidian AI 对话插件
+# AI Lexi — Obsidian 侧边栏 AI 聊天插件
 
-在 Obsidian 侧边栏中与 AI 进行多轮对话，支持本地 Ollama 和国内云 API。
+在 Obsidian 侧边栏中与 AI 进行多轮对话，支持本地 Ollama 和国内外云 API。原名 Ollama Chat。
 项目参考自 [Claudian](https://github.com/your-repo/claudian)（MIT 协议）。
 
 ## 支持的模型
 
-| 提供商 | 模型 | 工具调用 | 视觉/图片 |
-|--------|------|----------|-----------|
-| Ollama | 本地模型（如 Qwen、Gemma） | ✅ 原生 + 文本解析 | ✅ 视觉模型 |
-| DeepSeek | deepseek-chat | ✅ 原生 function calling | ❌ |
+| 提供商 | 默认模型 | 工具调用 | 视觉/图片 |
+|--------|---------|----------|-----------|
+| Ollama | 本地模型（如 Qwen2.5、Gemma） | ✅ 原生 + 文本解析 | ✅ 视觉模型 |
+| DeepSeek | deepseek-v4-flash | ✅ function calling | ❌ |
 | 小米 mimo | mimo-v2.5 | ✅ 文本解析 | ❌ |
+| Kimi | kimi-for-coding | ✅ function calling | ❌ |
+| Qwen | qwen-plus | ✅ function calling | ✅ qwen-vl 系列 |
+| GLM | glm-5.1 | ✅ function calling | ✅ glm-4v 系列 |
+| MiniMax | MiniMax-M3 | ✅ function calling | ❌ |
+| 豆包 | ep-xxxxxxxx-xxxxxx（推理接入点） | ✅ function calling | ❌ |
 
 ## 安装
 
@@ -45,5 +50,6 @@ npm run build  # 生产构建
 
 - TypeScript + esbuild
 - Obsidian Plugin API
-- OpenAI 兼容格式（DeepSeek、小米）
+- OpenAI 兼容格式（DeepSeek、Kimi、GLM、Qwen、MiniMax、豆包、小米）
 - Ollama 原生 API
+- 动态提供商架构
