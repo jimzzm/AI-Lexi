@@ -19,9 +19,19 @@
 
 ## 安装
 
-1. 将插件文件夹复制到 `<vault>/.obsidian/plugins/obsidian-ai-lexi/`
-2. 在 Obsidian 设置 → 第三方插件中启用
-3. 在插件设置中配置 API 地址和密钥
+### 方法一：通过 Releases 下载（推荐）
+
+1. 前往 [Releases](https://github.com/jimzzm/AI-Lexi/releases) 页面下载最新版本的 `main.js`、`manifest.json`、`styles.css`
+2. 在你的 Obsidian 仓库下创建文件夹 `<vault>/.obsidian/plugins/obsidian-ai-lexi/`
+3. 将三个文件复制到该文件夹
+4. 在 Obsidian 设置 → 第三方插件中启用 **AI Lexi**
+5. 在插件设置中配置 API 地址和密钥
+
+### 方法二：克隆仓库
+
+1. 将仓库克隆到 `<vault>/.obsidian/plugins/obsidian-ai-lexi/`
+2. 运行 `npm install && npm run build`
+3. 在 Obsidian 设置 → 第三方插件中启用
 
 ## 功能
 
