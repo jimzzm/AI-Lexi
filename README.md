@@ -18,7 +18,7 @@
 
 ## 安装
 
-1. 将插件文件夹复制到 `<vault>/.obsidian/plugins/obsidian-ollama-chat/`
+1. 将插件文件夹复制到 `<vault>/.obsidian/plugins/obsidian-ai-lexi/`
 2. 在 Obsidian 设置 → 第三方插件中启用
 3. 在插件设置中配置 API 地址和密钥
 
