@@ -1,0 +1,25 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Build output
+main.js
+main.js.map
+dist/
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Obsidian plugin data (generated at runtime)
+data.json
+
+# Claude local config
+.claude/
+
+# Reference project (not part of source)
+/claudian/

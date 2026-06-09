@@ -1,0 +1,10 @@
+{
+  "id": "obsidian-ai-lexi",
+  "name": "AI Lexi",
+  "version": "0.1.0",
+  "minAppVersion": "0.15.0",
+  "description": "在 Obsidian 侧边栏中与 AI 进行多轮对话，支持 Ollama / DeepSeek / 小米 mimo",
+  "author": "zzm",
+  "authorUrl": "https://github.com/zzm",
+  "isDesktopOnly": false
+}
