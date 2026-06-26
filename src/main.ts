@@ -32,7 +32,7 @@ export default class OllamaChatPlugin extends Plugin {
 
     // 添加打开侧边栏的命令
     this.addCommand({
-      id: "open-ollama-chat",
+      id: "open-sidebar-chat",
       name: "打开 AI Lexi",
       callback: () => {
         this.activateView();

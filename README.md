@@ -1,73 +1,87 @@
-# AI Lexi — Obsidian 侧边栏 AI 聊天插件
+# AI Lexi
 
-在 Obsidian 侧边栏中与 AI 进行多轮对话，支持本地 Ollama 和国内外云 API。原名 Ollama Chat。
+Chat with AI models in the Obsidian sidebar, supporting Ollama, DeepSeek, Xiaomi MiMo, and more.
 
-本项目的 UI 和交互设计参考自 [Claudian](https://github.com/YishenTu/claudian)，感谢原作者的开源工作。
+Originally named Ollama Chat. UI and interaction design inspired by [Claudian](https://github.com/YishenTu/claudian).
 
-## 支持的模型
+## Supported Providers
 
-| 提供商 | 默认模型 | 工具调用 | 视觉/图片 |
-|--------|---------|----------|-----------|
-| Ollama | 本地模型（如 Qwen2.5、Gemma） | ✅ 原生 + 文本解析 | ✅ 视觉模型 |
-| DeepSeek | deepseek-v4-flash | ✅ function calling | ❌ |
-| 小米 mimo | mimo-v2.5 | ✅ 文本解析 | ❌ |
-| Kimi | kimi-for-coding | ✅ function calling | ❌ |
-| Qwen | qwen-plus | ✅ function calling | ✅ qwen-vl 系列 |
-| GLM | glm-5.1 | ✅ function calling | ✅ glm-4v 系列 |
-| MiniMax | MiniMax-M3 | ✅ function calling | ❌ |
-| 豆包 | ep-xxxxxxxx-xxxxxx（推理接入点） | ✅ function calling | ❌ |
+| Provider | Default Model | Tool Calling | Vision |
+|----------|--------------|--------------|--------|
+| Ollama | Local models (Qwen2.5, Gemma, etc.) | Native + text parsing | Supported |
+| DeepSeek | deepseek-v4-flash | Function calling | Not supported |
+| Xiaomi MiMo | mimo-v2.5 | Text parsing | Not supported |
+| Kimi | kimi-for-coding | Function calling | Not supported |
+| Qwen | qwen-plus | Function calling | qwen-vl series |
+| GLM | glm-5.1 | Function calling | glm-4v series |
+| MiniMax | MiniMax-M3 | Function calling | Not supported |
+| Doubao | ep-xxxxxxxx-xxxxxx (endpoint ID) | Function calling | Not supported |
 
-## 安装
+## Installation
 
-### 方法一：通过 Releases 下载（推荐）
+### Method 1: Download from Releases (Recommended)
 
-1. 前往 [Releases](https://github.com/jimzzm/AI-Lexi/releases) 页面下载最新版本的 `main.js`、`manifest.json`、`styles.css`
-2. 在你的 Obsidian 仓库下创建文件夹 `<Obsidian Vault>/.obsidian/plugins/obsidian-ai-lexi/`
-3. 将三个文件复制到该文件夹
-4. 在 Obsidian 设置 → 第三方插件中启用 **AI Lexi**
-5. 在插件设置中配置 API 地址和密钥
+1. Download the latest `main.js`, `manifest.json`, and `styles.css` from [Releases](https://github.com/jimzzm/AI-Lexi/releases)
+2. Create folder `<Your Vault>/.obsidian/plugins/ai-lexi/`
+3. Copy the three files into that folder
+4. Enable **AI Lexi** in Settings > Community plugins
+5. Configure your API endpoint and key in the plugin settings
 
-### 方法二：克隆仓库
+### Method 2: Clone and Build
 
-1. 将仓库克隆到 `<Obsidian Vault>/.obsidian/plugins/obsidian-ai-lexi/`
-2. 运行 `npm install && npm run build`
-3. 在 Obsidian 设置 → 第三方插件中启用
+1. Clone this repo into `<Your Vault>/.obsidian/plugins/ai-lexi/`
+2. Run `npm install && npm run build`
+3. Enable in Settings > Community plugins
 
-## 功能
+## Features
 
-- 多轮对话，自动携带上下文
-- 工具调用：读取和写入笔记文件
-- 自动加载当前笔记上下文
-- 支持 CLAUDE.md 自定义指令
-- **视觉模型**：提取笔记中的图片传给 Ollama 视觉模型分析
-- **显存管理**：切换模型/新对话时自动释放显存
-- 中文界面
+- Multi-turn chat with automatic context
+- Tool calling: read and write note files
+- Auto-attach current note as context
+- Support for CLAUDE.md custom instructions
+- Vision models: send note images to Ollama vision models for analysis
+- VRAM management: auto-release memory on model switch or new conversation
+- Chinese UI
 
-## 配置
+## Network Services
 
-- Ollama 上下文窗口（num_ctx）可调滑块（2048~131072）
-- 图片分析提示词模板（用于视觉模型）
-- 系统提示词自定义
+This plugin communicates with the following remote services to provide AI chat functionality. No data is collected, stored, or transmitted beyond what is required for the chat interaction:
 
-## 开发
+- **Ollama** (local): Connects to a locally running Ollama instance. No external network requests.
+- **DeepSeek API**: Sends chat messages to `api.deepseek.com` for AI responses.
+- **Xiaomi MiMo API**: Sends chat messages to the Xiaomi MiMo endpoint for AI responses.
+- **Kimi API**: Sends chat messages to the Kimi API for AI responses.
+- **Qwen API (Alibaba Cloud)**: Sends chat messages to the DashScope API for AI responses.
+- **GLM API (Zhipu AI)**: Sends chat messages to the Zhipu AI API for AI responses.
+- **MiniMax API**: Sends chat messages to the MiniMax API for AI responses.
+- **Doubao API (Volcengine)**: Sends chat messages to the Volcengine endpoint for AI responses.
+
+All API keys are stored locally on your device and are never transmitted to any third party.
+
+## Configuration
+
+- Ollama context window (num_ctx) adjustable slider (2048~131072)
+- Image analysis prompt template (for vision models)
+
+## Development
 
 ```bash
 npm install
-npm run dev    # 开发模式（监听文件变化）
-npm run build  # 生产构建
+npm run dev    # Dev mode (watch)
+npm run build  # Production build
 ```
 
-## 技术栈
+## Tech Stack
 
 - TypeScript + esbuild
 - Obsidian Plugin API
-- OpenAI 兼容格式（DeepSeek、Kimi、GLM、Qwen、MiniMax、豆包、小米）
-- Ollama 原生 API
-- 动态提供商架构
+- OpenAI-compatible format (DeepSeek, Kimi, GLM, Qwen, MiniMax, Doubao, Xiaomi)
+- Ollama native API
+- Dynamic provider architecture
 
-## 许可
+## License
 
-MIT License。详见 [LICENSE](LICENSE) 文件。
+MIT License. See [LICENSE](LICENSE) for details.
 
 ## Acknowledgements
 
