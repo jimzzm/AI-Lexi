@@ -30,3 +30,8 @@ data.json
 
 # Codex local config
 .agents/
+
+# Dev-only agent configs
+CLAUDE.md
+AGENTS.md
+docs/
