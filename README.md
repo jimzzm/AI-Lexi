@@ -4,6 +4,8 @@ Chat with AI models in the Obsidian sidebar, supporting Ollama, DeepSeek, Xiaomi
 
 Originally named Ollama Chat. UI and interaction design inspired by [Claudian](https://github.com/YishenTu/claudian).
 
+[中文说明](README_CN.md)
+
 ## Supported Providers
 
 | Provider | Default Model | Tool Calling | Vision |
