@@ -27,3 +27,6 @@ data.json
 
 # Reference project (not part of source)
 /claudian/
+
+# Codex local config
+.agents/

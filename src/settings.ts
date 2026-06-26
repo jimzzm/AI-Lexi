@@ -4,6 +4,71 @@ import * as ollamaApi from "./api/ollama";
 import { OllamaChatSettings, ProviderConfig } from "./types";
 
 /**
+ * 每个提供商的可用模型列表（对话栏层级菜单用）
+ * ollama 的模型动态获取，此处留空
+ */
+export const PROVIDER_MODELS: Record<string, { label: string; models: string[] }> = {
+  ollama: { label: "Ollama", models: [] },
+  deepseek: { label: "DeepSeek", models: ["deepseek-v4-flash", "deepseek-v4-pro"] },
+  xiaomi: { label: "XiaoMIMO", models: ["mimo-v2.5", "mimo-v2-omni", "mimo-v2.5-pro"] },
+  kimi: { label: "Kimi", models: ["kimi-for-coding"] },
+  qwen: { label: "Qwen", models: ["qwen-plus", "qwen-max", "qwen-turbo"] },
+  glm: { label: "GLM", models: ["glm-5.1", "glm-4-plus"] },
+  minimax: { label: "MiniMax", models: ["MiniMax-M3"] },
+  doubao: { label: "豆包", models: [] },
+};
+
+/**
+ * 支持思考等级的提供商及其可选等级
+ */
+export const THINKING_LEVELS: Record<string, { label: string; value: string }[]> = {
+  deepseek: [
+    { label: "Default", value: "default" },
+    { label: "Low", value: "low" },
+    { label: "Medium", value: "medium" },
+    { label: "High", value: "high" },
+    { label: "XHigh", value: "xhigh" },
+    { label: "Max", value: "max" },
+  ],
+  xiaomi: [
+    { label: "Low", value: "low" },
+    { label: "Medium", value: "medium" },
+    { label: "High", value: "high" },
+    { label: "XHigh", value: "xhigh" },
+  ],
+  kimi: [
+    { label: "Default", value: "default" },
+    { label: "Low", value: "low" },
+    { label: "Medium", value: "medium" },
+    { label: "High", value: "high" },
+  ],
+  qwen: [
+    { label: "Default", value: "default" },
+    { label: "Low", value: "low" },
+    { label: "Medium", value: "medium" },
+    { label: "High", value: "high" },
+  ],
+  glm: [
+    { label: "Default", value: "default" },
+    { label: "Low", value: "low" },
+    { label: "Medium", value: "medium" },
+    { label: "High", value: "high" },
+  ],
+  minimax: [
+    { label: "Default", value: "default" },
+    { label: "Low", value: "low" },
+    { label: "Medium", value: "medium" },
+    { label: "High", value: "high" },
+  ],
+  doubao: [
+    { label: "Default", value: "default" },
+    { label: "Low", value: "low" },
+    { label: "Medium", value: "medium" },
+    { label: "High", value: "high" },
+  ],
+};
+
+/**
  * 云提供商的默认配置表
  */
 const CLOUD_PROVIDERS: Record<string, Omit<ProviderConfig, "apiKey" | "enabled">> = {
@@ -12,42 +77,49 @@ const CLOUD_PROVIDERS: Record<string, Omit<ProviderConfig, "apiKey" | "enabled">
     baseUrl: "https://api.deepseek.com/v1", model: "deepseek-v4-flash",
     temperature: 1.0, maxTokens: 4000,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: false,
+    availableModels: ["deepseek-v4-flash", "deepseek-v4-pro"],
   },
   xiaomi: {
     id: "xiaomi", name: "小米 mimo",
     baseUrl: "https://api.xiaomimimo.com/v1", model: "mimo-v2.5",
     temperature: 0.7, maxTokens: 4000,
     authType: "api-key", tokenParam: "max_completion_tokens", supportsVision: false,
+    availableModels: ["mimo-v2.5", "mimo-v2-omni", "mimo-v2.5-pro"],
   },
   kimi: {
     id: "kimi", name: "Kimi",
     baseUrl: "https://api.kimi.com/coding/v1", model: "kimi-for-coding",
     temperature: 0.8, maxTokens: 4000,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: false,
+    availableModels: ["kimi-for-coding"],
   },
   qwen: {
     id: "qwen", name: "Qwen",
     baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1", model: "qwen-plus",
     temperature: 0.8, maxTokens: 4000,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: true,
+    availableModels: ["qwen-plus", "qwen-max", "qwen-turbo"],
   },
   glm: {
     id: "glm", name: "GLM",
     baseUrl: "https://open.bigmodel.cn/api/paas/v4", model: "glm-5.1",
     temperature: 0.8, maxTokens: 4000,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: true,
+    availableModels: ["glm-5.1", "glm-4-plus"],
   },
   minimax: {
     id: "minimax", name: "MiniMax",
     baseUrl: "https://api.minimax.chat/v1", model: "MiniMax-M3",
     temperature: 0.8, maxTokens: 4000,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: false,
+    availableModels: ["MiniMax-M3"],
   },
   doubao: {
     id: "doubao", name: "豆包",
     baseUrl: "https://ark.cn-beijing.volces.com/api/v3", model: "ep-xxxxxxxx-xxxxxx",
     temperature: 0.8, maxTokens: 4000,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: false,
+    availableModels: [],
   },
 };
 
@@ -108,6 +180,10 @@ Please respond in the same language as the user. If the user writes in Chinese, 
   imagePromptTemplate: `分析当前笔记中的图片，为每张图片生成一段适合 AI 绘图的英文提示词（prompt），包含主体、动作、环境、光影、风格等要素。然后将提示词写入当前笔记中，替换或补充图片的描述部分。`,
   maxHistoryLength: 20,
   requestTimeout: 60000,
+
+  // 对话外观
+  userName: "我",
+  aiName: "AI Lexi",
 };
 
 /**
@@ -210,16 +286,31 @@ export class OllamaChatSettingTab extends PluginSettingTab {
     // 通用设置
     containerEl.createEl("h3", { text: "通用配置" });
 
+    // 对话外观设置
+    containerEl.createEl("h3", { text: "对话外观" });
+
     new Setting(containerEl)
-      .setClass("lexi-textarea-setting")
-      .setName("系统提示词")
-      .setDesc("AI 的系统提示词，定义 AI 的角色和行为")
-      .addTextArea((text) =>
+      .setName("用户显示名称")
+      .setDesc("你在对话中显示的名称")
+      .addText((text) =>
         text
-          .setPlaceholder("你是一个有用的AI助手，请用中文回答。")
-          .setValue(this.plugin.settings.systemPrompt)
+          .setPlaceholder("我")
+          .setValue(this.plugin.settings.userName || "我")
           .onChange(async (value) => {
-            this.plugin.settings.systemPrompt = value;
+            this.plugin.settings.userName = value || "我";
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("AI 显示名称")
+      .setDesc("AI 助手在对话中显示的名称")
+      .addText((text) =>
+        text
+          .setPlaceholder("AI Lexi")
+          .setValue(this.plugin.settings.aiName || "AI Lexi")
+          .onChange(async (value) => {
+            this.plugin.settings.aiName = value || "AI Lexi";
             await this.plugin.saveSettings();
           })
       );

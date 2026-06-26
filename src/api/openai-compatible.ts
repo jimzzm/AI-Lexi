@@ -31,6 +31,15 @@ export async function sendRequest(
     stream: false,
   };
 
+  // DeepSeek 思考模式支持
+  if (config.id === "deepseek" && config.thinkingLevel) {
+    requestBody.reasoning_effort = config.thinkingLevel;
+    requestBody.extra_body = { thinking: { type: "enabled" } };
+    // 思考模式下不支持 temperature 等参数
+    delete requestBody.temperature;
+    delete requestBody.top_p;
+  }
+
   // 构建认证头
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (config.authType === "bearer") {
@@ -98,6 +107,15 @@ export async function sendRequestWithTools(
     tools: tools,
     tool_choice: "auto",
   };
+
+  // DeepSeek 思考模式支持
+  if (config.id === "deepseek" && config.thinkingLevel) {
+    requestBody.reasoning_effort = config.thinkingLevel;
+    requestBody.extra_body = { thinking: { type: "enabled" } };
+    // 思考模式下不支持 temperature 等参数
+    delete requestBody.temperature;
+    delete requestBody.top_p;
+  }
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (config.authType === "bearer") {

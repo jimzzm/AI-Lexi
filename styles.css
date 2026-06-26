@@ -622,3 +622,250 @@
   min-height: 120px;
   resize: vertical;
 }
+
+/* ===== 模型选择器（两级菜单） ===== */
+.model-selector {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.model-selector-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-normal);
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.model-selector:hover .model-selector-label {
+  background: var(--background-modifier-hover);
+}
+
+.model-selector-arrow {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: 4px;
+  transition: transform 0.15s ease;
+}
+
+.model-selector-arrow svg {
+  width: 12px;
+  height: 12px;
+}
+
+.model-selector.open .model-selector-arrow {
+  transform: rotate(180deg);
+}
+
+.model-selector-dropdown {
+  position: absolute;
+  overflow: visible;
+  left: 0;
+  bottom: 100%;
+  margin-bottom: 4px;
+  min-width: 180px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease;
+  padding: 4px 0;
+}
+
+.model-selector-dropdown.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* 第一级：提供商项 */
+.model-provider-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.model-provider-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.model-provider-item.selected {
+  background: rgba(var(--interactive-accent-rgb), 0.1);
+  color: var(--interactive-accent);
+}
+
+.model-provider-label {
+  font-weight: 500;
+}
+
+/* 第二级：模型子菜单 */
+.model-submenu {
+  position: absolute;
+  left: 100%;
+  right: auto;
+  top: 0;
+  min-width: 200px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 101;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-4px);
+  transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease;
+  padding: 4px 0;
+}
+
+.model-submenu.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+}
+
+.model-submenu-item {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: background 0.1s ease;
+  white-space: nowrap;
+}
+
+.model-submenu-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.model-submenu-item.selected {
+  background: rgba(var(--interactive-accent-rgb), 0.15);
+  color: var(--interactive-accent);
+  font-weight: 500;
+}
+
+/* ===== 思考等级选择器 ===== */
+.thinking-selector {
+  display: flex; /* 默认显示，根据模型动态隐藏 */
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.thinking-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.thinking-gears {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+}
+
+.thinking-current {
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--interactive-accent);
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 3px;
+  white-space: nowrap;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.thinking-current:hover {
+  background: var(--background-modifier-hover);
+}
+
+.thinking-options {
+  position: absolute;
+  right: 0;
+  left: auto;
+  bottom: 100%;
+  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 4px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  z-index: 100;
+}
+
+.thinking-options.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.thinking-gear {
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 0.1s ease, color 0.1s ease;
+  white-space: nowrap;
+}
+
+.thinking-gear:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.thinking-gear.selected {
+  background: rgba(var(--interactive-accent-rgb), 0.15);
+  color: var(--interactive-accent);
+  font-weight: 500;
+}
+
+/* 用户消息操作按钮 */
+.user-msg-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.message-user:hover .user-msg-actions {
+  opacity: 1;
+}
+.user-msg-action-btn {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  transition: color 0.15s;
+}
+.user-msg-action-btn svg {
+  width: 14px;
+  height: 14px;
+}
+.user-msg-action-btn:hover {
+  color: var(--text-normal);
+}
+.user-msg-action-btn.copied {
+  color: var(--text-accent);
+  font-size: 11px;
+  font-family: var(--font-monospace);
+}

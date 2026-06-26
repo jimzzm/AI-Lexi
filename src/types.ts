@@ -74,6 +74,8 @@ export interface ProviderConfig {
   authType: "bearer" | "api-key";
   tokenParam: "max_tokens" | "max_completion_tokens";
   supportsVision: boolean;
+  thinkingLevel?: string;  // 思考等级（仅部分提供商支持）
+  availableModels?: string[];  // 该提供商可选的模型列表（设置为数据源）
 }
 
 /**
@@ -95,6 +97,14 @@ export interface OllamaChatSettings {
   imagePromptTemplate: string;
   maxHistoryLength: number;
   requestTimeout: number;
+
+  // 对话外观
+  userName?: string;
+  aiName?: string;
+
+  // 当前选择的提供商和模型（对话栏用）
+  currentProvider?: string;
+  currentModel?: string;
 }
 
 /**

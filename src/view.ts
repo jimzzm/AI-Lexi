@@ -1,6 +1,7 @@
 import { ItemView, WorkspaceLeaf, setIcon, TFile } from "obsidian";
 import { ConversationManager } from "./conversation";
 import { OllamaChatSettings } from "./types";
+import { THINKING_LEVELS } from "./settings";
 import { ProviderType, UnifiedResponse, ConversationRecord } from "./types";
 import * as ollamaApi from "./api/ollama";
 import * as openaiCompatible from "./api/openai-compatible";
@@ -44,7 +45,13 @@ export class OllamaChatView extends ItemView {
   private navRowTop: HTMLElement;       // 第一行：tab 徽标 + 按钮
   private navRowBottom: HTMLElement;    // 第三行：模型选择
   private tabBarEl: HTMLElement;        // 在 navRowTop 内
-  private providerSelect: HTMLSelectElement; // 在 navRowBottom 内
+  private modelSelectorEl: HTMLElement; // 模型选择器容器
+  private modelSelectorLabel: HTMLElement; // 模型选择器显示文本
+  private modelSelectorDropdown: HTMLElement; // 模型下拉菜单
+  private thinkingSelectorEl: HTMLElement; // 思考等级选择器容器
+  private thinkingCurrentEl: HTMLElement; // 思考等级当前值显示
+  private thinkingOptionsEl: HTMLElement; // 思考等级选项容器
+  private ollamaModels: string[] = []; // Ollama 本地模型列表
 
   // 访问当前 Tab 的快捷方式
   private get activeTab(): LexiTab {
@@ -181,29 +188,63 @@ export class OllamaChatView extends ItemView {
     setIcon(historyBtn, "clock");
     historyBtn.onClickEvent(() => this.toggleHistoryPanel());
 
-    // ===== 第三行：模型选择器 =====
+    // ===== 第三行：模型选择器 + 思考等级 =====
     this.navRowBottom = container.createDiv({ cls: "chat-nav-row-bottom" });
-    this.providerSelect = this.navRowBottom.createEl("select", { cls: "provider-select" });
-    this.refreshProviderOptions();
-    this.providerSelect.addEventListener("change", () => {
-      const opt = this.providerSelect.selectedOptions[0];
-      const newProvider = (opt?.dataset?.provider || "ollama") as ProviderType;
-      // 如果是 Ollama 之间切模型，卸载旧模型释放显存
-      if (this.currentProvider === "ollama" && newProvider === "ollama") {
-        const oldModel = this.settings.ollamaModel;
-        const newModel = opt?.value;
-        if (oldModel && newModel && oldModel !== newModel) {
-          ollamaApi.unloadModel(this.settings.ollamaBaseUrl, oldModel);
-        }
-      } else if (this.currentProvider === "ollama") {
-        // 从 Ollama 切到其他提供商，卸载 Ollama 模型
-        ollamaApi.unloadModel(this.settings.ollamaBaseUrl, this.settings.ollamaModel);
+
+    // 模型选择器（自定义下拉菜单）
+    this.modelSelectorEl = this.navRowBottom.createDiv({ cls: "model-selector" });
+    this.modelSelectorLabel = this.modelSelectorEl.createSpan({ cls: "model-selector-label", text: "加载中..." });
+    const arrowEl = this.modelSelectorEl.createSpan({ cls: "model-selector-arrow" });
+    setIcon(arrowEl, "chevron-down");
+    this.modelSelectorDropdown = this.modelSelectorEl.createDiv({ cls: "model-selector-dropdown" });
+
+    // 点击展开/收起下拉菜单
+    this.modelSelectorEl.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = this.modelSelectorDropdown.hasClass("open");
+      if (isOpen) {
+        this.modelSelectorDropdown.removeClass("open");
+      } else {
+        this.refreshModelDropdown();
+        this.modelSelectorDropdown.addClass("open");
       }
-      this.currentProvider = newProvider;
-      this.buildSystemPrompt();
-      this.updateWelcomeMessage();
     });
-    this.navRowBottom.createSpan({ cls: "chat-thinking-level", text: "" });
+
+    // 点击外部区域收起
+    this.registerDomEvent(document, "click", () => {
+      this.modelSelectorDropdown.removeClass("open");
+    });
+
+    // 思考等级选择器
+    this.thinkingSelectorEl = this.navRowBottom.createDiv({ cls: "thinking-selector" });
+    this.thinkingSelectorEl.createSpan({ cls: "thinking-label", text: "思考:" });
+    const thinkingGears = this.thinkingSelectorEl.createDiv({ cls: "thinking-gears" });
+    this.thinkingCurrentEl = thinkingGears.createDiv({ cls: "thinking-current", text: "High" });
+    const thinkingOptions = thinkingGears.createDiv({ cls: "thinking-options" });
+
+    // 填充思考等级选项（稍后根据模型动态更新）
+    this.thinkingOptionsEl = thinkingOptions;
+
+    // 点击展开/收起思考等级
+    thinkingGears.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = thinkingOptions.hasClass("open");
+      if (isOpen) {
+        thinkingOptions.removeClass("open");
+      } else {
+        thinkingOptions.addClass("open");
+      }
+    });
+    this.registerDomEvent(document, "click", () => {
+      thinkingOptions.removeClass("open");
+    });
+
+    // 初始化模型选择器
+    this.refreshModelSelector();
+    this.refreshThinkingSelector();
+
+    // 异步获取 Ollama 本地模型列表
+    this.fetchOllamaModels();
 
     // ===== Tab 内容容器 =====
 
@@ -389,6 +430,7 @@ export class OllamaChatView extends ItemView {
 
   /** 渲染历史对话列表 */
   private async renderHistoryList(panelEl: HTMLElement): Promise<void> {
+    panelEl.empty();
     const history = this.plugin.getConversationHistory();
     if (!history) {
       panelEl.createDiv({ cls: "chat-history-empty", text: "⚠️ 历史管理器未初始化" });
@@ -451,16 +493,20 @@ export class OllamaChatView extends ItemView {
       });
 
       // 删除按钮
-      const delBtn = itemEl.createDiv({ cls: "chat-history-item-del", text: "🗑️" });
+      const delBtn = itemEl.createDiv({ cls: "chat-history-item-del" });
+      setIcon(delBtn, "trash-2");
       delBtn.setAttr("aria-label", "删除此对话");
       delBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
         await history.delete(record.id);
-        // 如果删除的是当前对话，重置 convId
         if (this.activeTab.convId === record.id) {
+          this.activeTab.conversation.clear();
+          this.activeTab.messagesEl.empty();
           this.activeTab.convId = `conv_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
           this.activeTab.title = "";
+          this.addSystemMessage(`${this.getProviderName()} 为你服务。请选择模型并开始对话。`);
         }
+        panelEl.empty();
         await this.renderHistoryList(panelEl);
       });
     }
@@ -935,6 +981,14 @@ export class OllamaChatView extends ItemView {
       // 移除加载指示器
       loadingEl.remove();
 
+      // 显示上下文使用量
+      if (response.success && response.usage) {
+        const u = response.usage;
+        const promptK = u.prompt_tokens >= 1000 ? (u.prompt_tokens / 1000).toFixed(1) + "k" : String(u.prompt_tokens);
+        const compK = u.completion_tokens >= 1000 ? (u.completion_tokens / 1000).toFixed(1) + "k" : String(u.completion_tokens);
+        this.addStatusMessage(`📊 上下文: ↑${promptK} ↓${compK} (${u.total_tokens} tokens)`);
+      }
+
       if (response.success) {
         if (response.toolCalls && response.toolCalls.length > 0) {
           // 工具已在循环中执行完毕
@@ -1368,35 +1422,232 @@ export class OllamaChatView extends ItemView {
   }
 
   /**
-   * 刷新模型选择下拉框（从设置读取三个模型名）
+   * 异步获取 Ollama 本地模型列表
    */
-  private refreshProviderOptions(): void {
-    if (!this.providerSelect) return;
+  private async fetchOllamaModels(): Promise<void> {
+    try {
+      const models = await ollamaApi.fetchModels(this.settings.ollamaBaseUrl);
+      this.ollamaModels = models;
+      // 如果当前选中的模型不在列表中，添加到列表
+      if (models.length > 0 && !models.includes(this.settings.ollamaModel)) {
+        this.ollamaModels = [this.settings.ollamaModel, ...models];
+      }
+    } catch (e) {
+      console.warn("无法获取 Ollama 模型列表:", e);
+      this.ollamaModels = [this.settings.ollamaModel];
+    }
+    this.refreshModelDropdown();
+  }
 
-    // 清空现有选项
-    this.providerSelect.innerHTML = "";
+  /**
+   * 刷新模型选择器显示文本
+   */
+  private refreshModelSelector(): void {
+    const providerName = this.getProviderName();
+    const modelName = this.getModelName();
+    this.modelSelectorLabel.setText(`${providerName} · ${modelName}`);
+    this.refreshModelDropdown();
+  }
 
-    // Ollama 始终显示
-    const ollamaOpt = this.providerSelect.createEl("option", { text: this.settings.ollamaModel }) as HTMLOptionElement;
-    ollamaOpt.value = this.settings.ollamaModel;
-    ollamaOpt.dataset.provider = "ollama";
+  /**
+   * 刷新模型下拉菜单内容（两级菜单：提供商 → 模型）
+   */
+  private refreshModelDropdown(): void {
+    this.modelSelectorDropdown.empty();
 
-    // 动态遍历已启用的云端提供商
-    for (const [id, p] of Object.entries(this.settings.providers)) {
-      if (!p.enabled) continue;
-      const opt = this.providerSelect.createEl("option", { text: p.model }) as HTMLOptionElement;
-      opt.value = p.model;
-      opt.dataset.provider = id;
+    // Ollama 本地模型（单独处理，不在 providers 中）
+    {
+      const providerItem = this.modelSelectorDropdown.createDiv({ cls: "model-provider-item" });
+      const label = providerItem.createSpan({ cls: "model-provider-label", text: "Ollama" });
+      if (this.currentProvider === "ollama") {
+        providerItem.addClass("selected");
+      }
+      const subMenu = providerItem.createDiv({ cls: "model-submenu" });
+      const models = this.ollamaModels.length > 0
+        ? this.ollamaModels
+        : [this.settings.ollamaModel];
+      for (const model of models) {
+        const modelItem = subMenu.createDiv({ cls: "model-submenu-item" });
+        modelItem.setText(model);
+        if (this.currentProvider === "ollama" && this.settings.ollamaModel === model) {
+          modelItem.addClass("selected");
+        }
+        modelItem.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.selectModel("ollama", model);
+        });
+      }
+      providerItem.addEventListener("mouseenter", () => { subMenu.addClass("open"); });
+      providerItem.addEventListener("mouseleave", () => { subMenu.removeClass("open"); });
+      label.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (models.length === 1) {
+          this.selectModel("ollama", models[0]);
+        }
+      });
     }
 
-    // 选中当前提供商对应的模型
-    const allOptions = Array.from(this.providerSelect.options);
-    const match = allOptions.find(
-      (opt) => (opt as HTMLOptionElement).dataset.provider === this.currentProvider
-    );
-    if (match) {
-      this.providerSelect.value = match.value;
+    // 第一级：云端提供商列表
+    for (const [id, providerCfg] of Object.entries(this.settings.providers)) {
+
+      const providerItem = this.modelSelectorDropdown.createDiv({ cls: "model-provider-item" });
+      const label = providerItem.createSpan({ cls: "model-provider-label", text: providerCfg.name });
+
+      // 当前选中的提供商高亮
+      if (this.currentProvider === id) {
+        providerItem.addClass("selected");
+      }
+
+      // 子菜单容器
+      const subMenu = providerItem.createDiv({ cls: "model-submenu" });
+
+      // 填充模型列表
+      if (id === "ollama") {
+        // Ollama 动态模型
+        const models = this.ollamaModels.length > 0
+          ? this.ollamaModels
+          : [this.settings.ollamaModel];
+
+        for (const model of models) {
+          const modelItem = subMenu.createDiv({ cls: "model-submenu-item" });
+          modelItem.setText(model);
+          if (this.currentProvider === "ollama" && this.settings.ollamaModel === model) {
+            modelItem.addClass("selected");
+          }
+          modelItem.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.selectModel("ollama", model);
+          });
+        }
+      } else {
+        // 云端提供商：从 settings.providers 的 availableModels 读取
+        const availableModels = providerCfg.availableModels || [];
+        for (const model of availableModels) {
+          const modelItem = subMenu.createDiv({ cls: "model-submenu-item" });
+          modelItem.setText(model);
+          if (this.currentProvider === id && providerCfg.model === model) {
+            modelItem.addClass("selected");
+          }
+          modelItem.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.selectModel(id, model);
+          });
+        }
+
+        // 如果当前模型不在列表中，追加显示
+        if (providerCfg.model && (availableModels.length === 0 || !availableModels.includes(providerCfg.model))) {
+          const modelItem = subMenu.createDiv({ cls: "model-submenu-item" });
+          modelItem.setText(providerCfg.model);
+          if (this.currentProvider === id) {
+            modelItem.addClass("selected");
+          }
+          modelItem.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.selectModel(id, providerCfg.model);
+          });
+        }
+      }
+
+      // hover 展开子菜单
+      providerItem.addEventListener("mouseenter", () => {
+        subMenu.addClass("open");
+      });
+      providerItem.addEventListener("mouseleave", () => {
+        subMenu.removeClass("open");
+      });
+
+      // 点击提供商名称（如果只有一个模型则直接选择）
+      label.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const models = id === "ollama"
+          ? (this.ollamaModels.length > 0 ? this.ollamaModels : [this.settings.ollamaModel])
+          : (providerCfg.availableModels || []);
+        if (models.length === 1) {
+          this.selectModel(id, models[0]);
+        }
+      });
     }
+  }
+
+  /**
+   * 选择模型
+   */
+  private selectModel(provider: string, model: string): void {
+    const oldProvider = this.currentProvider;
+    const oldModel = this.currentProvider === "ollama"
+      ? this.settings.ollamaModel
+      : this.settings.providers[this.currentProvider]?.model;
+
+    // 如果是 Ollama 之间切模型，卸载旧模型释放显存
+    if (oldProvider === "ollama" && provider === "ollama" && oldModel !== model) {
+      ollamaApi.unloadModel(this.settings.ollamaBaseUrl, oldModel);
+    } else if (oldProvider === "ollama") {
+      // 从 Ollama 切到其他提供商，卸载 Ollama 模型
+      ollamaApi.unloadModel(this.settings.ollamaBaseUrl, this.settings.ollamaModel);
+    }
+
+    // 更新设置
+    if (provider === "ollama") {
+      this.settings.ollamaModel = model;
+    } else {
+      this.settings.providers[provider].model = model;
+    }
+    this.settings.currentProvider = provider;
+    this.settings.currentModel = model;
+    this.plugin.saveSettings();
+
+    // 更新状态
+    this.currentProvider = provider;
+    this.refreshModelSelector();
+    this.refreshThinkingSelector();
+    this.buildSystemPrompt();
+    this.updateWelcomeMessage();
+
+    // 关闭下拉菜单
+    this.modelSelectorDropdown.removeClass("open");
+  }
+
+  /**
+   * 刷新思考等级选择器
+   */
+  private refreshThinkingSelector(): void {
+    const levels = THINKING_LEVELS[this.currentProvider];
+
+    if (!levels || levels.length === 0) {
+      this.thinkingSelectorEl.style.display = "none";
+      return;
+    }
+
+    this.thinkingSelectorEl.style.display = "flex";
+    this.thinkingOptionsEl.empty();
+
+    const currentLevel = this.settings.providers[this.currentProvider]?.thinkingLevel || levels[0].value;
+    const currentInfo = levels.find((l: { label: string; value: string }) => l.value === currentLevel);
+    this.thinkingCurrentEl.setText(currentInfo?.label || levels[0].label);
+
+    for (const level of [...levels].reverse()) {
+      const gearEl = this.thinkingOptionsEl.createDiv({ cls: "thinking-gear" });
+      gearEl.setText(level.label);
+      if (level.value === currentLevel) {
+        gearEl.addClass("selected");
+      }
+      gearEl.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.selectThinkingLevel(level.value);
+      });
+    }
+  }
+
+  /**
+   * 选择思考等级
+   */
+  private selectThinkingLevel(level: string): void {
+    if (this.currentProvider !== "ollama" && this.settings.providers[this.currentProvider]) {
+      this.settings.providers[this.currentProvider].thinkingLevel = level;
+      this.plugin.saveSettings();
+    }
+    this.refreshThinkingSelector();
+    this.buildSystemPrompt();
   }
 
   /**
@@ -1407,9 +1658,41 @@ export class OllamaChatView extends ItemView {
       cls: `message message-${role}`,
     });
 
-    const roleLabel = role === "user" ? "你" : this.getModelName();
+    const roleLabel = role === "user" ? (this.settings.userName || "我") : (this.settings.aiName || "AI Lexi");
     messageEl.createDiv({ cls: "message-role", text: roleLabel });
     messageEl.createDiv({ cls: "message-content", text: content });
+
+    // 用户消息下方添加操作按钮
+    if (role === "user") {
+      const actionsEl = messageEl.createDiv({ cls: "user-msg-actions" });
+      const copyBtn = actionsEl.createSpan({ cls: "user-msg-action-btn" });
+      setIcon(copyBtn, "copy");
+      copyBtn.setAttr("aria-label", "复制消息");
+      let feedbackTimeout: number | null = null;
+      copyBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(content).then(() => {
+          if (feedbackTimeout) window.clearTimeout(feedbackTimeout);
+          copyBtn.empty();
+          copyBtn.setText("已复制");
+          copyBtn.addClass("copied");
+          feedbackTimeout = window.setTimeout(() => {
+            copyBtn.empty();
+            setIcon(copyBtn, "copy");
+            copyBtn.removeClass("copied");
+            feedbackTimeout = null;
+          }, 1500);
+        });
+      });
+      const editBtn = actionsEl.createSpan({ cls: "user-msg-action-btn" });
+      setIcon(editBtn, "pencil");
+      editBtn.setAttr("aria-label", "修改并重新发送");
+      editBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.inputEl.value = content;
+        this.inputEl.focus();
+      });
+    }
 
     this.scrollToBottom();
   }
@@ -1480,7 +1763,7 @@ export class OllamaChatView extends ItemView {
    */
   updateSettings(settings: OllamaChatSettings): void {
     this.settings = settings;
-    this.refreshProviderOptions();
+    this.refreshModelSelector();
     this.buildSystemPrompt();
   }
 }
