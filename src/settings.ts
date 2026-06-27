@@ -75,49 +75,49 @@ const CLOUD_PROVIDERS: Record<string, Omit<ProviderConfig, "apiKey" | "enabled">
   deepseek: {
     id: "deepseek", name: "DeepSeek",
     baseUrl: "https://api.deepseek.com/v1", model: "deepseek-v4-flash",
-    temperature: 1.0, maxTokens: 4000,
+    temperature: 1.0, maxTokens: 16384,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: false,
     availableModels: ["deepseek-v4-flash", "deepseek-v4-pro"],
   },
   xiaomi: {
     id: "xiaomi", name: "小米 mimo",
     baseUrl: "https://api.xiaomimimo.com/v1", model: "mimo-v2.5",
-    temperature: 0.7, maxTokens: 4000,
+    temperature: 0.7, maxTokens: 16384,
     authType: "api-key", tokenParam: "max_completion_tokens", supportsVision: false,
     availableModels: ["mimo-v2.5", "mimo-v2-omni", "mimo-v2.5-pro"],
   },
   kimi: {
     id: "kimi", name: "Kimi",
     baseUrl: "https://api.kimi.com/coding/v1", model: "kimi-for-coding",
-    temperature: 0.8, maxTokens: 4000,
+    temperature: 0.8, maxTokens: 16384,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: false,
     availableModels: ["kimi-for-coding"],
   },
   qwen: {
     id: "qwen", name: "Qwen",
     baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1", model: "qwen-plus",
-    temperature: 0.8, maxTokens: 4000,
+    temperature: 0.8, maxTokens: 16384,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: true,
     availableModels: ["qwen-plus", "qwen-max", "qwen-turbo"],
   },
   glm: {
     id: "glm", name: "GLM",
     baseUrl: "https://open.bigmodel.cn/api/paas/v4", model: "glm-5.1",
-    temperature: 0.8, maxTokens: 4000,
+    temperature: 0.8, maxTokens: 16384,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: true,
     availableModels: ["glm-5.1", "glm-4-plus"],
   },
   minimax: {
     id: "minimax", name: "MiniMax",
     baseUrl: "https://api.minimax.chat/v1", model: "MiniMax-M3",
-    temperature: 0.8, maxTokens: 4000,
+    temperature: 0.8, maxTokens: 16384,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: false,
     availableModels: ["MiniMax-M3"],
   },
   doubao: {
     id: "doubao", name: "豆包",
     baseUrl: "https://ark.cn-beijing.volces.com/api/v3", model: "ep-xxxxxxxx-xxxxxx",
-    temperature: 0.8, maxTokens: 4000,
+    temperature: 0.8, maxTokens: 16384,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: false,
     availableModels: [],
   },
@@ -184,6 +184,8 @@ Please respond in the same language as the user. If the user writes in Chinese, 
   // 对话外观
   userName: "我",
   aiName: "AI Lexi",
+  currentProvider: "deepseek",
+  currentModel: "deepseek-v4-flash",
 };
 
 /**
@@ -201,95 +203,119 @@ export class OllamaChatSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl("h2", { text: "AI Lexi 设置" });
+    // 注入选项卡样式
+    if (!document.getElementById("lexi-settings-tab-style")) {
+      const style = document.createElement("style");
+      style.id = "lexi-settings-tab-style";
+      style.textContent = `
+        .lexi-settings-tabs {
+          display: flex;
+          gap: 0;
+          border-bottom: 2px solid var(--background-modifier-border);
+          margin-bottom: 16px;
+          overflow-x: auto;
+          flex-wrap: nowrap;
+          width: 100%;
+        }
+        .lexi-settings-tab {
+          padding: 6px 10px;
+          cursor: pointer;
+          border: none;
+          background: transparent;
+          color: var(--text-muted);
+          font-size: 13px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 70px;
+          flex: 1;
+          min-width: 0;
+          border-bottom: 2px solid transparent;
+          margin-bottom: -2px;
+          transition: color 0.2s, border-color 0.2s;
+        }
+        .lexi-settings-tab:hover {
+          color: var(--text-on-accent);
+          background: var(--interactive-accent);
+          border-radius: 3px;
+        }
+        .lexi-settings-tab.lexi-tab-active {
+          color: var(--text-on-accent);
+          background: var(--interactive-accent);
+          border-bottom-color: var(--interactive-accent);
+          font-weight: 600;
+          border-radius: 3px;
+        }
+        .lexi-settings-panel {
+          display: none;
+        }
+        .lexi-settings-panel.lexi-panel-active {
+          display: block;
+        }
+      `;
+      document.head.appendChild(style);
+    }
 
-    // Ollama 设置
-    containerEl.createEl("h3", { text: "Ollama 配置" });
+    // 选项卡定义：id → 显示名称
+    const tabDefs = [
+      { id: "general", label: "通用配置" },
+      { id: "ollama", label: "Ollama" },
+      { id: "deepseek", label: "DeepSeek" },
+      { id: "doubao", label: "豆包" },
+      { id: "xiaomi", label: "小米" },
+      { id: "qwen", label: "Qwen" },
+      { id: "glm", label: "GLM" },
+      { id: "minimax", label: "MiniMax" },
+      { id: "kimi", label: "Kimi" },
+    ];
 
-    new Setting(containerEl)
-      .setName("Ollama 服务地址")
-      .setDesc("Ollama 服务的 URL 地址")
-      .addText((text) =>
-        text
-          .setPlaceholder("http://localhost:11434")
-          .setValue(this.plugin.settings.ollamaBaseUrl)
-          .onChange(async (value) => {
-            this.plugin.settings.ollamaBaseUrl = value;
-            await this.plugin.saveSettings();
-          })
-      );
+    // 创建选项卡栏
+    const tabBar = containerEl.createDiv({ cls: "lexi-settings-tabs" });
+    // 创建面板容器
+    const panelContainer = containerEl.createDiv();
+    // 存储所有面板元素
+    const panels: Record<string, HTMLElement> = {};
 
-    new Setting(containerEl)
-      .setName("Ollama 模型名称")
-      .setDesc("从 Ollama 列表中选择模型，自动刷新")
-      .addDropdown((dropdown) => {
-        // 先添加当前值作为默认项
-        dropdown.addOption(this.plugin.settings.ollamaModel, this.plugin.settings.ollamaModel);
-        dropdown.setValue(this.plugin.settings.ollamaModel);
-        dropdown.onChange(async (value) => {
-          this.plugin.settings.ollamaModel = value;
-          await this.plugin.saveSettings();
-        });
+    // 创建面板 div
+    for (const tab of tabDefs) {
+      panels[tab.id] = panelContainer.createDiv({ cls: "lexi-settings-panel", attr: { "data-tab": tab.id } });
+    }
 
-        // 异步刷新模型列表
-        this.refreshOllamaModels(dropdown);
+    // 渲染各面板内容
+    this.renderGeneralPanel(panels["general"]);
+    this.renderOllamaPanel(panels["ollama"]);
+    this.renderProviderPanel(panels["deepseek"], "deepseek");
+    this.renderProviderPanel(panels["doubao"], "doubao");
+    this.renderProviderPanel(panels["xiaomi"], "xiaomi");
+    this.renderProviderPanel(panels["qwen"], "qwen");
+    this.renderProviderPanel(panels["glm"], "glm");
+    this.renderProviderPanel(panels["minimax"], "minimax");
+    this.renderProviderPanel(panels["kimi"], "kimi");
+
+    // 创建选项卡按钮并绑定切换逻辑
+    const tabButtons: HTMLElement[] = [];
+    for (const tab of tabDefs) {
+      const btn = tabBar.createEl("button", { cls: "lexi-settings-tab", text: tab.label });
+      btn.title = tab.label;
+      btn.addEventListener("click", () => {
+        // 移除所有激活状态
+        for (const b of tabButtons) b.removeClass("lexi-tab-active");
+        for (const p of Object.values(panels)) p.removeClass("lexi-panel-active");
+        // 激活当前选项卡
+        btn.addClass("lexi-tab-active");
+        panels[tab.id].addClass("lexi-panel-active");
       });
+      tabButtons.push(btn);
+    }
 
-    new Setting(containerEl)
-      .setName("Ollama 温度")
-      .setDesc("采样温度，范围 0~2，越高输出越随机")
-      .addSlider((slider) =>
-        slider
-          .setLimits(0, 2, 0.1)
-          .setValue(this.plugin.settings.ollamaTemperature)
-          .setDynamicTooltip()
-          .onChange(async (value) => {
-            this.plugin.settings.ollamaTemperature = value;
-            await this.plugin.saveSettings();
-          })
-      );
+    // 默认选中"通用配置"
+    tabButtons[0].addClass("lexi-tab-active");
+    panels["general"].addClass("lexi-panel-active");
+  }
 
-    new Setting(containerEl)
-      .setName("Ollama 最大 Token 数")
-      .setDesc("最大生成 token 数")
-      .addText((text) =>
-        text
-          .setPlaceholder("2000")
-          .setValue(String(this.plugin.settings.ollamaMaxTokens))
-          .onChange(async (value) => {
-            const num = parseInt(value, 10);
-            if (!isNaN(num)) {
-              this.plugin.settings.ollamaMaxTokens = num;
-              await this.plugin.saveSettings();
-            }
-          })
-      );
-
-    new Setting(containerEl)
-      .setName("Ollama 上下文窗口")
-      .setDesc("上下文长度（num_ctx），越大显存占用越高。视觉模型建议 4096~8192，一般聊天 8192~16384，大模型可到 32768+")
-      .addSlider((slider) =>
-        slider
-          .setLimits(2048, 131072, 2048)
-          .setValue(this.plugin.settings.ollamaNumCtx)
-          .setDynamicTooltip()
-          .onChange(async (value) => {
-            this.plugin.settings.ollamaNumCtx = value;
-            await this.plugin.saveSettings();
-          })
-      );
-
-    // 云端提供商配置（动态卡片）
-    containerEl.createEl("h3", { text: "云端模型配置" });
-    this.renderProviderCards(containerEl);
-
-    // 通用设置
-    containerEl.createEl("h3", { text: "通用配置" });
-
-    // 对话外观设置
-    containerEl.createEl("h3", { text: "对话外观" });
-
-    new Setting(containerEl)
+  /** 渲染通用配置面板 */
+  private renderGeneralPanel(container: HTMLElement): void {
+    new Setting(container)
       .setName("用户显示名称")
       .setDesc("你在对话中显示的名称")
       .addText((text) =>
@@ -302,7 +328,7 @@ export class OllamaChatSettingTab extends PluginSettingTab {
           })
       );
 
-    new Setting(containerEl)
+    new Setting(container)
       .setName("AI 显示名称")
       .setDesc("AI 助手在对话中显示的名称")
       .addText((text) =>
@@ -315,7 +341,7 @@ export class OllamaChatSettingTab extends PluginSettingTab {
           })
       );
 
-    new Setting(containerEl)
+    new Setting(container)
       .setClass("lexi-textarea-setting")
       .setName("图片提示词模板")
       .setDesc("当笔记中包含图片时，附加到系统提示词中。要求模型分析图片并生成提示词写入笔记。留空则不启用。")
@@ -329,7 +355,7 @@ export class OllamaChatSettingTab extends PluginSettingTab {
           })
       );
 
-    new Setting(containerEl)
+    new Setting(container)
       .setName("最大历史轮数")
       .setDesc("保留的最大对话轮数，防止上下文溢出")
       .addText((text) =>
@@ -345,7 +371,7 @@ export class OllamaChatSettingTab extends PluginSettingTab {
           })
       );
 
-    new Setting(containerEl)
+    new Setting(container)
       .setName("请求超时（毫秒）")
       .setDesc("API 请求超时时间")
       .addText((text) =>
@@ -362,13 +388,100 @@ export class OllamaChatSettingTab extends PluginSettingTab {
       );
   }
 
-  /** 渲染云端提供商卡片列表 */
+  /** 渲染 Ollama 配置面板 */
+  private renderOllamaPanel(container: HTMLElement): void {
+    new Setting(container)
+      .setName("Ollama 服务地址")
+      .setDesc("Ollama 服务的 URL 地址")
+      .addText((text) =>
+        text
+          .setPlaceholder("http://localhost:11434")
+          .setValue(this.plugin.settings.ollamaBaseUrl)
+          .onChange(async (value) => {
+            this.plugin.settings.ollamaBaseUrl = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(container)
+      .setName("Ollama 模型名称")
+      .setDesc("从 Ollama 列表中选择模型，自动刷新")
+      .addDropdown((dropdown) => {
+        // 先添加当前值作为默认项
+        dropdown.addOption(this.plugin.settings.ollamaModel, this.plugin.settings.ollamaModel);
+        dropdown.setValue(this.plugin.settings.ollamaModel);
+        dropdown.onChange(async (value) => {
+          this.plugin.settings.ollamaModel = value;
+          await this.plugin.saveSettings();
+        });
+
+        // 异步刷新模型列表
+        this.refreshOllamaModels(dropdown);
+      });
+
+    new Setting(container)
+      .setName("Ollama 温度")
+      .setDesc("采样温度，范围 0~2，越高输出越随机")
+      .addSlider((slider) =>
+        slider
+          .setLimits(0, 2, 0.1)
+          .setValue(this.plugin.settings.ollamaTemperature)
+          .setDynamicTooltip()
+          .onChange(async (value) => {
+            this.plugin.settings.ollamaTemperature = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(container)
+      .setName("Ollama 最大 Token 数")
+      .setDesc("最大生成 token 数")
+      .addText((text) =>
+        text
+          .setPlaceholder("2000")
+          .setValue(String(this.plugin.settings.ollamaMaxTokens))
+          .onChange(async (value) => {
+            const num = parseInt(value, 10);
+            if (!isNaN(num)) {
+              this.plugin.settings.ollamaMaxTokens = num;
+              await this.plugin.saveSettings();
+            }
+          })
+      );
+
+    new Setting(container)
+      .setName("Ollama 上下文窗口")
+      .setDesc("上下文长度（num_ctx），越大显存占用越高。视觉模型建议 4096~8192，一般聊天 8192~16384，大模型可到 32768+")
+      .addSlider((slider) =>
+        slider
+          .setLimits(2048, 131072, 2048)
+          .setValue(this.plugin.settings.ollamaNumCtx)
+          .setDynamicTooltip()
+          .onChange(async (value) => {
+            this.plugin.settings.ollamaNumCtx = value;
+            await this.plugin.saveSettings();
+          })
+      );
+  }
+
+  /** 渲染单个云端提供商面板（复用 renderProviderCard 的折叠卡片逻辑） */
+  private renderProviderPanel(container: HTMLElement, providerId: string): void {
+    const p = this.plugin.settings.providers[providerId];
+    if (p) {
+      this.renderProviderCard(container, providerId, p);
+    } else {
+      container.createEl("p", { text: "未找到该提供商配置。" });
+    }
+  }
+
+  /** 渲染云端提供商卡片列表（保留兼容，供旧逻辑使用） */
   private renderProviderCards(container: HTMLElement): void {
     const providers = this.plugin.settings.providers;
     for (const [id, p] of Object.entries(providers)) {
       this.renderProviderCard(container, id, p);
     }
   }
+
 
   /** 渲染单个提供商折叠卡片 */
   private renderProviderCard(container: HTMLElement, id: string, p: import("./types").ProviderConfig): void {
@@ -382,27 +495,12 @@ export class OllamaChatSettingTab extends PluginSettingTab {
       cls: `provider-status-dot ${isEnabled ? "provider-status-on" : "provider-status-off"}`,
       text: isEnabled ? "🟢" : "🔴",
     });
-    const nameSpan = header.createSpan({ cls: "provider-card-name", text: p.name });
+    const nameSpan = header.createSpan({ cls: "provider-card-name", text: id === "doubao" ? "火山方舟（豆包）" : p.name });
     if (p.supportsVision) {
       header.createSpan({ cls: "provider-card-vision", text: " 🖼️" });
     }
-    const toggleBtn = header.createSpan({ cls: "provider-card-toggle", text: "▾" });
     const body = card.createDiv({ cls: "provider-card-body" });
-
-    // 点击头部折叠/展开
-    let expanded = false;
-    header.addEventListener("click", () => {
-      expanded = !expanded;
-      body.style.display = expanded ? "block" : "none";
-      toggleBtn.textContent = expanded ? "▴" : "▾";
-    });
-    body.style.display = "none";
-    // 默认展开已启用的提供商
-    if (isEnabled) {
-      expanded = true;
-      body.style.display = "block";
-      toggleBtn.textContent = "▴";
-    }
+    body.style.display = "block";
 
     // ---- 卡片内容 ----
 
@@ -440,17 +538,24 @@ export class OllamaChatSettingTab extends PluginSettingTab {
 
     // 模型名称
     new Setting(body)
-      .setName("模型名称")
-      .setDesc(id === "doubao" ? "火山引擎推理接入点 ID（ep-xxxxxx），非模型名本身" : "要使用的模型名称")
-      .addText((text) =>
-        text
-          .setPlaceholder(p.model)
-          .setValue(p.model)
+      .setName("自定义模型")
+      .setDesc("每行一个模型 ID，第一行为默认选中模型。")
+      .addTextArea((text) => {
+        const ta = text
+          .setPlaceholder(id === "doubao" ? "ep-xxxxxxxxxxxx" : "每行输入一个模型 ID")
+          .setValue(id === "doubao" ? "" : p.model)
           .onChange(async (value) => {
-            providers[id].model = value;
+            const lines = value.split('\n').map(s => s.trim()).filter(Boolean);
+            providers[id].model = lines[0] || '';
+            providers[id].availableModels = lines;
             await this.plugin.saveSettings();
-          })
-      );
+          });
+        // 设置多行文本域样式
+        ta.inputEl.rows = 4;
+        ta.inputEl.style.width = "100%";
+        ta.inputEl.style.fontFamily = "var(--font-monospace)";
+        ta.inputEl.style.fontSize = "var(--font-small)";
+      });
 
     // 温度
     new Setting(body)
@@ -473,7 +578,7 @@ export class OllamaChatSettingTab extends PluginSettingTab {
       .setDesc("最大生成 token 数")
       .addText((text) =>
         text
-          .setPlaceholder("4000")
+          .setPlaceholder("16384")
           .setValue(String(p.maxTokens))
           .onChange(async (value) => {
             const num = parseInt(value, 10);

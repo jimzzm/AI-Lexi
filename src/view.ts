@@ -168,6 +168,13 @@ export class OllamaChatView extends ItemView {
   async onOpen(): Promise<void> {
     if (!this.containerEl) return;
 
+    // 从设置恢复上次使用的提供商和模型
+    const savedProvider = this.settings.currentProvider;
+    const savedModel = this.settings.currentModel;
+    if (savedProvider && savedProvider !== this.currentProvider) {
+      this.currentProvider = savedProvider as ProviderType;
+    }
+
     let container: HTMLElement | null =
       this.contentEl ?? (this.containerEl.children[1] as HTMLElement | null);
     if (!container) container = this.containerEl.createDiv();
@@ -1520,9 +1527,11 @@ export class OllamaChatView extends ItemView {
           });
         }
       } else {
-        // 云端提供商：从 settings.providers 的 availableModels 读取
-        const availableModels = providerCfg.availableModels || [];
-        for (const model of availableModels) {
+        // 云端提供商：从 availableModels 读取模型列表
+        const models = providerCfg.availableModels && providerCfg.availableModels.length > 0
+          ? providerCfg.availableModels
+          : [providerCfg.model];
+        for (const model of models) {
           const modelItem = subMenu.createDiv({ cls: "model-submenu-item" });
           modelItem.setText(model);
           if (this.currentProvider === id && providerCfg.model === model) {
@@ -1531,19 +1540,6 @@ export class OllamaChatView extends ItemView {
           modelItem.addEventListener("click", (e) => {
             e.stopPropagation();
             this.selectModel(id, model);
-          });
-        }
-
-        // 如果当前模型不在列表中，追加显示
-        if (providerCfg.model && (availableModels.length === 0 || !availableModels.includes(providerCfg.model))) {
-          const modelItem = subMenu.createDiv({ cls: "model-submenu-item" });
-          modelItem.setText(providerCfg.model);
-          if (this.currentProvider === id) {
-            modelItem.addClass("selected");
-          }
-          modelItem.addEventListener("click", (e) => {
-            e.stopPropagation();
-            this.selectModel(id, providerCfg.model);
           });
         }
       }

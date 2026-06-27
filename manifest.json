@@ -1,10 +1,10 @@
 {
   "id": "ai-lexi",
   "name": "AI Lexi",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minAppVersion": "1.7.7",
-  "description": "Chat with AI models in the Obsidian sidebar, supporting Ollama, DeepSeek, Xiaomi MiMo, and more.",
-  "author": "zzm",
+  "description": "Let AI optimize, organize, and enhance your documents in the Obsidian sidebar. Supports Ollama, DeepSeek, Doubao, and other LLM providers.",
+  "author": "jimzzm",
   "authorUrl": "https://github.com/jimzzm",
   "isDesktopOnly": false
 }
