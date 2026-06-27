@@ -1,6 +1,6 @@
 # AI Lexi
 
-Chat with AI models in the Obsidian sidebar, supporting Ollama, DeepSeek, Xiaomi MiMo, and more.
+Let AI optimize, organize, and enhance your documents in the Obsidian sidebar. Supports Ollama, DeepSeek, Doubao, and other LLM providers.
 
 Originally named Ollama Chat. UI and interaction design inspired by [Claudian](https://github.com/YishenTu/claudian).
 

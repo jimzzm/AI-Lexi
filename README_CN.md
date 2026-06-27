@@ -1,6 +1,6 @@
 # AI Lexi
 
-在 Obsidian 侧边栏中与 AI 进行多轮对话，支持 Ollama、DeepSeek、小米 MiMo 等多种提供商。
+在 Obsidian 侧边栏中让 AI 为你的文档提供优化、整理等操作，支持 Ollama、DeepSeek、豆包等大模型。
 
 原名 Ollama Chat。UI 和交互设计参考自 [Claudian](https://github.com/YishenTu/claudian)。
 
