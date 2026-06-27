@@ -7,16 +7,7 @@
 ## 支持的提供商
 
 Ollama、DeepSeek、小米 MiMo、Kimi、Qwen、GLM、MiniMax、火山方舟（豆包）
-## 支持的提供商
 
-- Ollama
-- DeepSeek
-- 小米 MiMo
-- Kimi
-- Qwen
-- GLM
-- MiniMax
-- 火山方舟（豆包）
 ## 安装
 
 ### 方法一：通过 Releases 下载（推荐）

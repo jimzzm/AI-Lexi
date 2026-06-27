@@ -7,16 +7,7 @@ Let AI optimize, organize, and enhance your documents in the Obsidian sidebar. S
 ## Supported Providers
 
 Ollama, DeepSeek, Xiaomi MiMo, Kimi, Qwen, GLM, MiniMax, Doubao (Volcengine Ark)
-## Supported Providers
 
-- Ollama
-- DeepSeek
-- Xiaomi MiMo
-- Kimi
-- Qwen
-- GLM
-- MiniMax
-- Doubao (Volcengine Ark)
 ## Installation
 
 ### Method 1: Download from Releases (Recommended)
