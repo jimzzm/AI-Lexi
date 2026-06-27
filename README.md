@@ -6,17 +6,17 @@ Let AI optimize, organize, and enhance your documents in the Obsidian sidebar. S
 
 ## Supported Providers
 
-| Provider | Default Model | Tool Calling | Vision |
-|----------|--------------|--------------|--------|
-| Ollama | Local models (Qwen2.5, Gemma, etc.) | Native + text parsing | Supported |
-| DeepSeek | deepseek-v4-flash | Function calling | Not supported |
-| Xiaomi MiMo | mimo-v2.5 | Text parsing | Not supported |
-| Kimi | kimi-for-coding | Function calling | Not supported |
-| Qwen | qwen-plus | Function calling | qwen-vl series |
-| GLM | glm-5.1 | Function calling | glm-4v series |
-| MiniMax | MiniMax-M3 | Function calling | Not supported |
-| Doubao | ep-xxxxxxxx-xxxxxx (endpoint ID) | Function calling | Not supported |
+Ollama, DeepSeek, Xiaomi MiMo, Kimi, Qwen, GLM, MiniMax, Doubao
+## Supported Providers
 
+- Ollama
+- DeepSeek
+- Xiaomi MiMo
+- Kimi
+- Qwen
+- GLM
+- MiniMax
+- Doubao
 ## Installation
 
 ### Method 1: Download from Releases (Recommended)

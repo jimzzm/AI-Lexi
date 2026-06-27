@@ -6,17 +6,17 @@
 
 ## 支持的提供商
 
-| 提供商 | 默认模型 | 工具调用 | 视觉/图片 |
-|--------|---------|----------|-----------|
-| Ollama | 本地模型（如 Qwen2.5、Gemma） | 原生 + 文本解析 | 支持 |
-| DeepSeek | deepseek-v4-flash | function calling | 不支持 |
-| 小米 MiMo | mimo-v2.5 | 文本解析 | 不支持 |
-| Kimi | kimi-for-coding | function calling | 不支持 |
-| Qwen | qwen-plus | function calling | qwen-vl 系列 |
-| GLM | glm-5.1 | function calling | glm-4v 系列 |
-| MiniMax | MiniMax-M3 | function calling | 不支持 |
-| 豆包 | ep-xxxxxxxx-xxxxxx（推理接入点） | function calling | 不支持 |
+Ollama、DeepSeek、小米 MiMo、Kimi、Qwen、GLM、MiniMax、豆包
+## 支持的提供商
 
+- Ollama
+- DeepSeek
+- 小米 MiMo
+- Kimi
+- Qwen
+- GLM
+- MiniMax
+- 豆包
 ## 安装
 
 ### 方法一：通过 Releases 下载（推荐）
