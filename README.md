@@ -1,12 +1,12 @@
 # AI Lexi
 
-Let AI optimize, organize, and enhance your documents in the Obsidian sidebar. Supports Ollama, DeepSeek, Doubao, and other LLM providers.
+Let AI optimize, organize, and enhance your documents in the Obsidian sidebar. Supports Ollama, DeepSeek, Doubao (Volcengine Ark), and other LLM providers.
 
 [中文说明](README_CN.md)
 
 ## Supported Providers
 
-Ollama, DeepSeek, Xiaomi MiMo, Kimi, Qwen, GLM, MiniMax, Doubao
+Ollama, DeepSeek, Xiaomi MiMo, Kimi, Qwen, GLM, MiniMax, Doubao (Volcengine Ark)
 ## Supported Providers
 
 - Ollama
@@ -16,7 +16,7 @@ Ollama, DeepSeek, Xiaomi MiMo, Kimi, Qwen, GLM, MiniMax, Doubao
 - Qwen
 - GLM
 - MiniMax
-- Doubao
+- Doubao (Volcengine Ark)
 ## Installation
 
 ### Method 1: Download from Releases (Recommended)
@@ -54,7 +54,7 @@ This plugin communicates with the following remote services to provide AI chat f
 - **Qwen API (Alibaba Cloud)**: Sends chat messages to the DashScope API for AI responses.
 - **GLM API (Zhipu AI)**: Sends chat messages to the Zhipu AI API for AI responses.
 - **MiniMax API**: Sends chat messages to the MiniMax API for AI responses.
-- **Doubao API (Volcengine)**: Sends chat messages to the Volcengine endpoint for AI responses.
+- **Doubao (Volcengine Ark) API (Volcengine)**: Sends chat messages to the Volcengine endpoint for AI responses.
 
 All API keys are stored locally on your device and are never transmitted to any third party.
 
@@ -75,7 +75,7 @@ npm run build  # Production build
 
 - TypeScript + esbuild
 - Obsidian Plugin API
-- OpenAI-compatible format (DeepSeek, Kimi, GLM, Qwen, MiniMax, Doubao, Xiaomi)
+- OpenAI-compatible format (DeepSeek, Kimi, GLM, Qwen, MiniMax, Doubao (Volcengine Ark), Xiaomi)
 - Ollama native API
 - Dynamic provider architecture
 

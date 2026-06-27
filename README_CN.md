@@ -1,12 +1,12 @@
 # AI Lexi
 
-让 AI 直接在 Obsidian 中为你的文档提供优化、整理等操作，支持 Ollama、DeepSeek、豆包等国产大模型。
+让 AI 直接在 Obsidian 中为你的文档提供优化、整理等操作，支持 Ollama、DeepSeek、火山方舟（豆包）等国产大模型。
 
 [English](README.md)
 
 ## 支持的提供商
 
-Ollama、DeepSeek、小米 MiMo、Kimi、Qwen、GLM、MiniMax、豆包
+Ollama、DeepSeek、小米 MiMo、Kimi、Qwen、GLM、MiniMax、火山方舟（豆包）
 ## 支持的提供商
 
 - Ollama
@@ -16,7 +16,7 @@ Ollama、DeepSeek、小米 MiMo、Kimi、Qwen、GLM、MiniMax、豆包
 - Qwen
 - GLM
 - MiniMax
-- 豆包
+- 火山方舟（豆包）
 ## 安装
 
 ### 方法一：通过 Releases 下载（推荐）
@@ -54,7 +54,7 @@ Ollama、DeepSeek、小米 MiMo、Kimi、Qwen、GLM、MiniMax、豆包
 - **Qwen API（阿里云）**：向 DashScope API 发送聊天消息以获取 AI 回复。
 - **GLM API（智谱 AI）**：向智谱 AI API 发送聊天消息以获取 AI 回复。
 - **MiniMax API**：向 MiniMax API 发送聊天消息以获取 AI 回复。
-- **豆包 API（火山引擎）**：向火山引擎端点发送聊天消息以获取 AI 回复。
+- **火山方舟（豆包） API（火山引擎）**：向火山引擎端点发送聊天消息以获取 AI 回复。
 
 所有 API 密钥均存储在本地设备上，不会传输给任何第三方。
 
@@ -75,7 +75,7 @@ npm run build  # 生产构建
 
 - TypeScript + esbuild
 - Obsidian Plugin API
-- OpenAI 兼容格式（DeepSeek、Kimi、GLM、Qwen、MiniMax、豆包、小米）
+- OpenAI 兼容格式（DeepSeek、Kimi、GLM、Qwen、MiniMax、火山方舟（豆包）、小米）
 - Ollama 原生 API
 - 动态提供商架构
 
