@@ -78,3 +78,10 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 - [Claudian](https://github.com/YishenTu/claudian) — UI design and interaction patterns
 - [Obsidian](https://obsidian.md) — Powerful plugin API
+
+
+## v1.1.0 (2026-06-29)
+- 新增：顶部 tokens 消耗总量显示（圆点 + 进度条 + 百分比）
+- 修复：每轮对话 tokens 消耗显示恢复
+- 修复：DeepSeek 无法对话的问题
+- 优化：顶部工具栏样式调整
