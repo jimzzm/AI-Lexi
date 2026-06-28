@@ -38,6 +38,14 @@ export interface UnifiedResponseSuccess {
 }
 
 /**
+ * Streaming 回调
+ */
+export interface StreamingCallbacks {
+  onToken: (token: string) => void;       // 每个内容块到达时回调
+  onThinking?: (text: string) => void;    // 思考/推理过程文本（如 DeepSeek 的 reasoning_content）
+}
+
+/**
  * 统一响应体（失败）
  */
 export interface UnifiedResponseError {
@@ -71,6 +79,7 @@ export interface ProviderConfig {
   model: string;
   temperature: number;
   maxTokens: number;
+  contextWindow: number;   // 上下文窗口大小（token 数）
   authType: "bearer" | "api-key";
   tokenParam: "max_tokens" | "max_completion_tokens";
   supportsVision: boolean;

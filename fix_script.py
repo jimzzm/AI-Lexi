@@ -185,7 +185,7 @@ export class OllamaChatView extends ItemView {
     this.tabBarEl = this.navRowTop.createDiv({ cls: "chat-tab-bar" });
     // 上下文使用量显示（中间）
     this.contextUsageEl = this.navRowTop.createDiv({ cls: "context-usage" });
-      this.contextUsageEl.createDiv({ cls: "context-dot" });
+    this.contextUsageEl.createDiv({ cls: "context-icon" });
     this.contextBarEl = this.contextUsageEl.createDiv({ cls: "context-bar" });
     const barFill = this.contextBarEl.createDiv({ cls: "context-bar-fill" });
     this.contextPctEl = this.contextUsageEl.createSpan({ cls: "context-pct", text: "--" });
@@ -1098,7 +1098,6 @@ export class OllamaChatView extends ItemView {
         }
 
         let loopCount = 0;
-        let toolLoopUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
         let currentResponse: UnifiedResponse = {
           success: true,
           content: fullContent,
@@ -1119,15 +1118,13 @@ export class OllamaChatView extends ItemView {
           }
           this.updateLoadingText(loadingEl, `等待 ${this.getProviderName()} 回复...`);
           currentResponse = await this.sendRequestWithTools();
-          // 累加工具循环的 token 用量
-          if (currentResponse.usage) {
-            toolLoopUsage.prompt_tokens += currentResponse.usage.prompt_tokens;
-            toolLoopUsage.completion_tokens += currentResponse.usage.completion_tokens;
-            toolLoopUsage.total_tokens += currentResponse.usage.total_tokens;
-          }
         }
+      }
+    }
+
     loadingEl.remove();
 
+    if (response.success) {
     if (response.success) {
       // 显示单轮 token 消耗
       const showRoundUsage = (usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | undefined) => {
@@ -1148,13 +1145,8 @@ export class OllamaChatView extends ItemView {
       if (hasToolCalls) {
         this.addMessage("assistant", "✅ 已完成编辑。");
         this.conversation.addAssistantMessage("✅ 已完成编辑。");
-        // 合并流式响应的 usage 和工具循环中的 usage
-        var mergedUsage = {
-          prompt_tokens: (response.usage?.prompt_tokens || 0) + toolLoopUsage.prompt_tokens,
-          completion_tokens: (response.usage?.completion_tokens || 0) + toolLoopUsage.completion_tokens,
-          total_tokens: (response.usage?.total_tokens || 0) + toolLoopUsage.total_tokens,
-        };
-        showRoundUsage(mergedUsage);
+        // 工具调用分支：直接用流式响应中的 usage
+        showRoundUsage(response.usage);
       } else {
         const cleanContent = this.stripToolCallText(fullContent);
         if (cleanContent) {
@@ -1193,15 +1185,25 @@ export class OllamaChatView extends ItemView {
         this.conversation.addAssistantMessage(streamTextEl.textContent);
       }
     }
+      streamMsgEl.remove();
+      this.addErrorMessage(`❌ ${response.error.code}: ${response.error.message}`);
+      if (streamTextEl.textContent?.trim()) {
+        this.addMessage("assistant", streamTextEl.textContent);
+        this.conversation.addAssistantMessage(streamTextEl.textContent);
+      }
     }
+
+    if (!this.activeTab.title) {
+      const msgs = this.conversation.getMessages();
+      this.activeTab.title = this.generateConversationTitle(msgs);
     }
+    await this.saveConversationRecord(this.activeTab);
   }
 
   /**
    * 云端管道：流式 + 原生 tool_calls + 思考链
    */
   private async sendCloudMessage(loadingEl: HTMLElement): Promise<void> {
-    const providerConfig = this.settings.providers[this.currentProvider];
     if (!providerConfig) {
       throw new Error(`未知的提供商: ${this.currentProvider}`);
     }
@@ -1344,7 +1346,6 @@ export class OllamaChatView extends ItemView {
           let loopCount = 0;
           let currentCalls = filteredCalls;
 
-          var toolLoopUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
           while (currentCalls.length > 0) {
             loopCount++;
             if (loopCount > 5) {
@@ -1361,30 +1362,11 @@ export class OllamaChatView extends ItemView {
               this.addErrorMessage(`❌ ${nextResponse.error.code}: ${nextResponse.error.message}`);
               break;
             }
-          if (nextResponse.usage) { toolLoopUsage.prompt_tokens += nextResponse.usage.prompt_tokens; toolLoopUsage.completion_tokens += nextResponse.usage.completion_tokens; toolLoopUsage.total_tokens += nextResponse.usage.total_tokens; }
             currentCalls = nextResponse.toolCalls || [];
           }
 
           loadingEl.remove();
-        // 工具循环完成：显示 token 消耗
-        try {
-          if (response.usage) {
-            var mergedUsage = {
-              prompt_tokens: (response.usage?.prompt_tokens || 0) + toolLoopUsage.prompt_tokens,
-              completion_tokens: (response.usage?.completion_tokens || 0) + toolLoopUsage.completion_tokens,
-              total_tokens: (response.usage?.total_tokens || 0) + toolLoopUsage.total_tokens,
-            };
-            var u = mergedUsage;
-            var pk = u.prompt_tokens >= 1000 ? (u.prompt_tokens / 1000).toFixed(1) + "k" : String(u.prompt_tokens);
-            var ck = u.completion_tokens >= 1000 ? (u.completion_tokens / 1000).toFixed(1) + "k" : String(u.completion_tokens);
-            this.scrollToBottom();
-            this.addStatusMessage("📊 上下文: ↑" + pk + " ↓" + ck + " (" + u.total_tokens + " tokens)");
-            this.totalUsage.prompt_tokens += u.prompt_tokens;
-            this.totalUsage.completion_tokens += u.completion_tokens;
-            this.totalUsage.total_tokens += u.total_tokens;
-            this.updateContextUsage(this.totalUsage);
-          }
-        } catch(e) {}
+        }
       }
     }
 
@@ -1448,10 +1430,8 @@ export class OllamaChatView extends ItemView {
       this.activeTab.title = this.generateConversationTitle(msgs);
     }
     await this.saveConversationRecord(this.activeTab);
-    }
   }
-  private async sendRequestWithTools(): Promise<UnifiedResponse> {
-
+async sendRequestWithTools(): Promise<UnifiedResponse> {
     const messages = this.conversation.getMessages();
     const tools = this.getTools();
 
@@ -2290,7 +2270,7 @@ export class OllamaChatView extends ItemView {
     // 同时更新顶部的总消耗量控件
     if (this.contextUsageEl) {
       if (usage) {
-        this.updateContextUsage(this.totalUsage);
+        this.updateContextUsage(usage);
       }
     }
   }

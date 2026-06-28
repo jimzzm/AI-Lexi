@@ -185,7 +185,7 @@ export class OllamaChatView extends ItemView {
     this.tabBarEl = this.navRowTop.createDiv({ cls: "chat-tab-bar" });
     // 上下文使用量显示（中间）
     this.contextUsageEl = this.navRowTop.createDiv({ cls: "context-usage" });
-      this.contextUsageEl.createDiv({ cls: "context-dot" });
+    this.contextUsageEl.createDiv({ cls: "context-icon" });
     this.contextBarEl = this.contextUsageEl.createDiv({ cls: "context-bar" });
     const barFill = this.contextBarEl.createDiv({ cls: "context-bar-fill" });
     this.contextPctEl = this.contextUsageEl.createSpan({ cls: "context-pct", text: "--" });
@@ -1201,7 +1201,6 @@ export class OllamaChatView extends ItemView {
    * 云端管道：流式 + 原生 tool_calls + 思考链
    */
   private async sendCloudMessage(loadingEl: HTMLElement): Promise<void> {
-    const providerConfig = this.settings.providers[this.currentProvider];
     if (!providerConfig) {
       throw new Error(`未知的提供商: ${this.currentProvider}`);
     }
@@ -1448,7 +1447,6 @@ export class OllamaChatView extends ItemView {
       this.activeTab.title = this.generateConversationTitle(msgs);
     }
     await this.saveConversationRecord(this.activeTab);
-    }
   }
   private async sendRequestWithTools(): Promise<UnifiedResponse> {
 
@@ -2290,7 +2288,7 @@ export class OllamaChatView extends ItemView {
     // 同时更新顶部的总消耗量控件
     if (this.contextUsageEl) {
       if (usage) {
-        this.updateContextUsage(this.totalUsage);
+        this.updateContextUsage(usage);
       }
     }
   }

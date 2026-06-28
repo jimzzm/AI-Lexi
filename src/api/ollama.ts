@@ -395,3 +395,179 @@ export async function sendRequestWithTools(
     };
   }
 }
+
+
+/**
+ * 发送流式请求到 Ollama API（纯对话，非工具调用路径）
+ * 通过 onToken 回调实时返回内容块，实现流式对话显示
+ */
+export async function sendRequestStreaming(
+  messages: Message[],
+  config: OllamaConfig,
+  callbacks: import("../types").StreamingCallbacks
+): Promise<UnifiedResponse> {
+  const base = config.baseUrl.replace(/\/+$/, "");
+  const isV1 = base.endsWith("/v1");
+  const endpoint = isV1 ? `${base}/chat/completions` : `${base}/api/chat`;
+
+  const buildMsgs = (msgs: any[]) => msgs.map((m: any) => {
+    const msg: any = { role: m.role, content: m.content };
+    if (m.images && m.images.length > 0) msg.images = m.images;
+    return msg;
+  });
+
+  const requestBody = isV1
+    ? {
+        model: config.model,
+        messages: messages.map((m: any) => {
+          if (m.images && m.images.length > 0) {
+            const parts: any[] = [{ type: "text", text: m.content }];
+            for (const img of m.images) {
+              parts.push({
+                type: "image_url",
+                image_url: { url: `data:image/png;base64,${img}` },
+              });
+            }
+            return { role: m.role, content: parts };
+          }
+          return { role: m.role, content: m.content };
+        }),
+        temperature: config.temperature ?? 0.8,
+        max_tokens: config.maxTokens ?? 2000,
+        stream: true,
+      }
+    : {
+        model: config.model,
+        messages: buildMsgs(messages),
+        stream: true,
+        options: {
+          temperature: config.temperature ?? 0.8,
+          num_ctx: config.numCtx ?? 8192,
+          top_p: 0.9,
+        },
+      };
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+      signal: config.signal,
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return { success: false, error: { code: "MODEL_NOT_FOUND", message: `模型 ${config.model} 不存在` } };
+      }
+      let detail = `HTTP ${response.status}`;
+      try {
+        const errBody = await response.json();
+        if (errBody.error) detail += ": " + errBody.error;
+      } catch {}
+      return { success: false, error: { code: "API_ERROR", message: detail } };
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      return { success: false, error: { code: "NO_STREAM", message: "响应体不支持流式读取" } };
+    }
+
+    const decoder = new TextDecoder();
+    let fullContent = "";
+    let buffer = "";
+    let streamUsage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | undefined;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";  // 最后一个不完整的行留在 buffer 里
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed === "data: [DONE]") continue;
+
+        let dataLine = trimmed;
+        if (dataLine.startsWith("data: ")) {
+          dataLine = dataLine.slice(6);
+        }
+
+        try {
+          const parsed = JSON.parse(dataLine);
+          let token = "";
+
+          if (isV1) {
+            // OpenAI 兼容格式
+            token = parsed.choices?.[0]?.delta?.content || "";
+          } else {
+            // Ollama 原生格式
+            token = parsed.message?.content || parsed.response || "";
+          }
+
+          if (token) {
+            fullContent += token;
+            callbacks.onToken(token);
+          }
+
+          // 从流式 chunk 收集 usage
+          if (parsed.done && typeof parsed.eval_count === "number") {
+            streamUsage = {
+              prompt_tokens: parsed.prompt_eval_count ?? 0,
+              completion_tokens: parsed.eval_count,
+              total_tokens: (parsed.prompt_eval_count ?? 0) + parsed.eval_count,
+            };
+          } else if (parsed.usage && typeof parsed.usage.total_tokens === "number") {
+            streamUsage = parsed.usage;
+          }
+        } catch {
+          // 忽略解析失败的行（如非 JSON 的控制行）
+        }
+      }
+    }
+
+    // 处理 buffer 中可能残留的数据
+    if (buffer.trim()) {
+      try {
+        const parsed = JSON.parse(buffer.trim());
+        let token = "";
+        if (isV1) {
+          token = parsed.choices?.[0]?.delta?.content || "";
+        } else {
+          token = parsed.message?.content || parsed.response || "";
+        }
+        if (token) {
+          fullContent += token;
+          callbacks.onToken(token);
+        }
+
+        // 检查 buffer 中的 usage（done chunk 可能在这里）
+        if (parsed.done && typeof parsed.eval_count === "number") {
+          streamUsage = {
+            prompt_tokens: parsed.prompt_eval_count ?? 0,
+            completion_tokens: parsed.eval_count,
+            total_tokens: (parsed.prompt_eval_count ?? 0) + parsed.eval_count,
+          };
+        } else if (parsed.usage && typeof parsed.usage.total_tokens === "number") {
+          streamUsage = parsed.usage;
+        }
+      } catch {}
+    }
+
+    return {
+      success: true,
+      content: fullContent,
+      model: config.model,
+      usage: streamUsage,
+    };
+  } catch (err: any) {
+    if (err.name === "AbortError") {
+      return { success: false, error: { code: "ABORTED", message: "请求已取消" } };
+    }
+    if (err.code === "ECONNREFUSED" || err.message?.includes("ECONNREFUSED")) {
+      return { success: false, error: { code: "NETWORK_ERROR", message: "无法连接到 Ollama 服务" } };
+    }
+    return { success: false, error: { code: "UNKNOWN_ERROR", message: err.message || "未知错误" } };
+  }
+}

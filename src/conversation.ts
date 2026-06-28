@@ -63,8 +63,13 @@ export class ConversationManager {
       tool_name: toolName,
       content,
     };
+    // tool_call_id 必须设置（DeepSeek/OpenAI 兼容 API 要求 tool 消息带 tool_call_id）
+    // 即使是 Ollama 路径，设置也无害（Ollama 会忽略不认识的字段）
     if (toolCallId) {
       msg.tool_call_id = toolCallId;
+    } else {
+      // 如果没有 tool_call_id，生成一个占位 id 防止 API 报 400
+      msg.tool_call_id = `call_fallback_${Date.now()}`;
     }
     this.messages.push(msg);
     this.trimHistory();

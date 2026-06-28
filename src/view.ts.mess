@@ -185,7 +185,7 @@ export class OllamaChatView extends ItemView {
     this.tabBarEl = this.navRowTop.createDiv({ cls: "chat-tab-bar" });
     // 上下文使用量显示（中间）
     this.contextUsageEl = this.navRowTop.createDiv({ cls: "context-usage" });
-      this.contextUsageEl.createDiv({ cls: "context-dot" });
+    this.contextUsageEl.createDiv({ cls: "context-icon" });
     this.contextBarEl = this.contextUsageEl.createDiv({ cls: "context-bar" });
     const barFill = this.contextBarEl.createDiv({ cls: "context-bar-fill" });
     this.contextPctEl = this.contextUsageEl.createSpan({ cls: "context-pct", text: "--" });
@@ -1128,7 +1128,6 @@ export class OllamaChatView extends ItemView {
         }
     loadingEl.remove();
 
-    if (response.success) {
       // 显示单轮 token 消耗
       const showRoundUsage = (usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | undefined) => {
         if (usage) {
@@ -1148,6 +1147,7 @@ export class OllamaChatView extends ItemView {
       if (hasToolCalls) {
         this.addMessage("assistant", "✅ 已完成编辑。");
         this.conversation.addAssistantMessage("✅ 已完成编辑。");
+        // 工具调用分支：直接用流式响应中的 usage
         // 合并流式响应的 usage 和工具循环中的 usage
         var mergedUsage = {
           prompt_tokens: (response.usage?.prompt_tokens || 0) + toolLoopUsage.prompt_tokens,
@@ -1184,7 +1184,6 @@ export class OllamaChatView extends ItemView {
             }
           } catch {}
         }
-      }
     } else {
       streamMsgEl.remove();
       this.addErrorMessage(`❌ ${response.error.code}: ${response.error.message}`);
@@ -1192,16 +1191,18 @@ export class OllamaChatView extends ItemView {
         this.addMessage("assistant", streamTextEl.textContent);
         this.conversation.addAssistantMessage(streamTextEl.textContent);
       }
+
+    if (!this.activeTab.title) {
+      const msgs = this.conversation.getMessages();
+      this.activeTab.title = this.generateConversationTitle(msgs);
     }
-    }
-    }
+    await this.saveConversationRecord(this.activeTab);
   }
 
   /**
    * 云端管道：流式 + 原生 tool_calls + 思考链
    */
   private async sendCloudMessage(loadingEl: HTMLElement): Promise<void> {
-    const providerConfig = this.settings.providers[this.currentProvider];
     if (!providerConfig) {
       throw new Error(`未知的提供商: ${this.currentProvider}`);
     }
@@ -1448,10 +1449,8 @@ export class OllamaChatView extends ItemView {
       this.activeTab.title = this.generateConversationTitle(msgs);
     }
     await this.saveConversationRecord(this.activeTab);
-    }
   }
-  private async sendRequestWithTools(): Promise<UnifiedResponse> {
-
+async sendRequestWithTools(): Promise<UnifiedResponse> {
     const messages = this.conversation.getMessages();
     const tools = this.getTools();
 
@@ -2290,7 +2289,7 @@ export class OllamaChatView extends ItemView {
     // 同时更新顶部的总消耗量控件
     if (this.contextUsageEl) {
       if (usage) {
-        this.updateContextUsage(this.totalUsage);
+        this.updateContextUsage(usage);
       }
     }
   }

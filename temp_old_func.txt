@@ -1,0 +1,132 @@
+private async sendCloudMessage(loadingEl: HTMLElement): Promise<void> {
+    const providerConfig = this.settings.providers[this.currentProvider];
+    if (!providerConfig) {
+      throw new Error(`未知的提供商: ${this.currentProvider}`);
+    }
+
+    this.updateLoadingText(loadingEl, "正在思考...");
+
+    const streamMsgEl = this.chatContainer.createDiv({
+      cls: "message message-assistant streaming",
+    });
+    streamMsgEl.createDiv({ cls: "message-role", text: this.settings.aiName || "AI Lexi" });
+    const streamContentEl = streamMsgEl.createDiv({ cls: "message-content" });
+    const streamTextEl = streamContentEl.createDiv({ cls: "message-text-block" });
+    this.scrollToBottom();
+
+    let fullContent = "";
+    let hasToolCalls = false;
+
+    const response = await openaiCompatible.sendRequestStreaming(
+      this.conversation.getMessages(),
+      this.getTools(),
+      providerConfig,
+      this.abortController?.signal,
+      {
+        onToken: async (token: string) => {
+          fullContent += token;
+          this.updateLoadingText(loadingEl, "正在思考...");
+          try {
+            streamTextEl.empty();
+            await MarkdownRenderer.render(this.app, fullContent, streamTextEl, "", this);
+          } catch {
+            streamTextEl.textContent = fullContent;
+          }
+          this.scrollToBottom();
+        },
+        onThinking: (_text: string) => {
+          this.updateLoadingText(loadingEl, "正在思考...");
+        },
+      }
+    );
+
+    // 工具检车：原生 response.toolCalls
+    if (response.success) {
+      const toolCalls = (response as any).toolCalls || [];
+      if (toolCalls.length > 0) {
+        hasToolCalls = true;
+
+        if (fullContent) {
+          this.conversation.addAssistantMessage(fullContent);
+        }
+        streamMsgEl.remove();
+
+        const toolCallsWithId = toolCalls.map((tc: any) => ({
+          ...tc,
+          id: tc.id || tc.function?.name || `call_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        }));
+        this.conversation.addAssistantMessageWithToolCalls(response.content || "", toolCallsWithId);
+        (response as any).toolCalls = toolCallsWithId;
+
+        // 云端模型智力高，但会自主决定调用工具
+        // 如果用户只是咨询意见，跳过 write_file 不执行
+        const lastUserMsg = this.conversation.getMessages().filter(m => m.role === "user").pop();
+        const userWantsEdit = lastUserMsg && /[编辑修改写入更新添加删除翻译润色改写]|edit|write|update|modify|translate/i.test(lastUserMsg.content);
+        const filteredCalls = userWantsEdit
+          ? toolCalls
+          : toolCalls.filter((tc: any) => tc.function?.name !== "write_file");
+
+        if (filteredCalls.length === 0) {
+          // 没有需要执行的工具，保留流式内容
+          if (fullContent) {
+            this.conversation.addAssistantMessage(fullContent);
+          }
+        } else {
+          hasToolCalls = true;
+          if (fullContent) {
+            this.conversation.addAssistantMessage(fullContent);
+          }
+          streamMsgEl.remove();
+
+          // 用过滤后的 toolCalls 替换原始 toolCalls
+          (response as any).toolCalls = filteredCalls;
+
+          let loopCount = 0;
+          let currentResponse: UnifiedResponse = response;
+
+          while (currentResponse.success && currentResponse.toolCalls && currentResponse.toolCalls.length > 0) {
+            loopCount++;
+            if (loopCount > 5) {
+              this.addStatusMessage("⚠️ 工具调用超过 5 次，停止循环");
+              break;
+            }
+            this.updateLoadingText(loadingEl, "正在执行工具...");
+            await this.handleToolCalls(currentResponse.toolCalls);
+            this.updateLoadingText(loadingEl, `等待 ${this.getProviderName()} 回复...`);
+            currentResponse = await this.sendRequestWithTools();
+          }
+        }
+      }
+    }
+
+    loadingEl.remove();
+
+    if (response.success) {
+      if (hasToolCalls) {
+        // 工具循环已执行完毕，不需要额外显示
+      } else {
+        if (fullContent) {
+          this.conversation.addAssistantMessage(fullContent);
+        } else {
+          streamMsgEl.remove();
+          this.addStatusMessage(`⚠️ ${this.getProviderName()} 返回了空内容`);
+        }
+        if (response.usage) {
+          this.updateContextUsage(response.usage);
+        }
+      }
+    } else {
+      streamMsgEl.remove();
+      this.addErrorMessage(`❌ ${response.error.code}: ${response.error.message}`);
+      if (streamTextEl.textContent?.trim()) {
+        this.addMessage("assistant", streamTextEl.textContent);
+        this.conversation.addAssistantMessage(streamTextEl.textContent);
+      }
+    }
+
+    if (!this.activeTab.title) {
+      const msgs = this.conversation.getMessages();
+      this.activeTab.title = this.generateConversationTitle(msgs);
+    }
+    await this.saveConversationRecord(this.activeTab);
+  }

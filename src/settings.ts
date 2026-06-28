@@ -76,6 +76,7 @@ const CLOUD_PROVIDERS: Record<string, Omit<ProviderConfig, "apiKey" | "enabled">
     id: "deepseek", name: "DeepSeek",
     baseUrl: "https://api.deepseek.com/v1", model: "deepseek-v4-flash",
     temperature: 1.0, maxTokens: 16384,
+    contextWindow: 1048576,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: false,
     availableModels: ["deepseek-v4-flash", "deepseek-v4-pro"],
   },
@@ -83,6 +84,7 @@ const CLOUD_PROVIDERS: Record<string, Omit<ProviderConfig, "apiKey" | "enabled">
     id: "xiaomi", name: "小米 mimo",
     baseUrl: "https://api.xiaomimimo.com/v1", model: "mimo-v2.5",
     temperature: 0.7, maxTokens: 16384,
+    contextWindow: 1048576,
     authType: "api-key", tokenParam: "max_completion_tokens", supportsVision: false,
     availableModels: ["mimo-v2.5", "mimo-v2-omni", "mimo-v2.5-pro"],
   },
@@ -90,6 +92,7 @@ const CLOUD_PROVIDERS: Record<string, Omit<ProviderConfig, "apiKey" | "enabled">
     id: "kimi", name: "Kimi",
     baseUrl: "https://api.kimi.com/coding/v1", model: "kimi-for-coding",
     temperature: 0.8, maxTokens: 16384,
+    contextWindow: 262144,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: false,
     availableModels: ["kimi-for-coding"],
   },
@@ -97,6 +100,7 @@ const CLOUD_PROVIDERS: Record<string, Omit<ProviderConfig, "apiKey" | "enabled">
     id: "qwen", name: "Qwen",
     baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1", model: "qwen-plus",
     temperature: 0.8, maxTokens: 16384,
+    contextWindow: 262144,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: true,
     availableModels: ["qwen-plus", "qwen-max", "qwen-turbo"],
   },
@@ -104,6 +108,7 @@ const CLOUD_PROVIDERS: Record<string, Omit<ProviderConfig, "apiKey" | "enabled">
     id: "glm", name: "GLM",
     baseUrl: "https://open.bigmodel.cn/api/paas/v4", model: "glm-5.1",
     temperature: 0.8, maxTokens: 16384,
+    contextWindow: 1048576,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: true,
     availableModels: ["glm-5.1", "glm-4-plus"],
   },
@@ -111,6 +116,7 @@ const CLOUD_PROVIDERS: Record<string, Omit<ProviderConfig, "apiKey" | "enabled">
     id: "minimax", name: "MiniMax",
     baseUrl: "https://api.minimax.chat/v1", model: "MiniMax-M3",
     temperature: 0.8, maxTokens: 16384,
+    contextWindow: 1048576,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: false,
     availableModels: ["MiniMax-M3"],
   },
@@ -118,6 +124,7 @@ const CLOUD_PROVIDERS: Record<string, Omit<ProviderConfig, "apiKey" | "enabled">
     id: "doubao", name: "豆包",
     baseUrl: "https://ark.cn-beijing.volces.com/api/v3", model: "ep-xxxxxxxx-xxxxxx",
     temperature: 0.8, maxTokens: 16384,
+    contextWindow: 262144,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: false,
     availableModels: [],
   },
@@ -475,6 +482,22 @@ export class OllamaChatSettingTab extends PluginSettingTab {
   }
 
   /** 渲染云端提供商卡片列表（保留兼容，供旧逻辑使用） */
+  /**
+   * 获取提供商默认上下文窗口大小
+   */
+  private getDefaultContextWindow(providerId: string): number {
+    const defaults: Record<string, number> = {
+      deepseek: 1048576, // 1M
+      xiaomi: 1048576,   // 1M
+      minimax: 1048576,  // 1M
+      glm: 1048576,      // 1M
+      kimi: 262144,      // 256K
+      qwen: 262144,      // 256K
+      doubao: 262144,    // 256K
+    };
+    return defaults[providerId] || 131072;
+  }
+
   private renderProviderCards(container: HTMLElement): void {
     const providers = this.plugin.settings.providers;
     for (const [id, p] of Object.entries(providers)) {
@@ -584,6 +607,40 @@ export class OllamaChatSettingTab extends PluginSettingTab {
             const num = parseInt(value, 10);
             if (!isNaN(num)) {
               providers[id].maxTokens = num;
+              await this.plugin.saveSettings();
+            }
+          })
+      );
+
+    // 上下文窗口大小
+    new Setting(body)
+      .setName("上下文窗口大小")
+      .setDesc("上下文窗口（token 数），用于计算上下文使用量百分比")
+      .addText((text) =>
+        text
+          .setPlaceholder("自动")
+          .setValue(String(p.contextWindow || this.getDefaultContextWindow(id)))
+          .onChange(async (value) => {
+            const num = parseInt(value, 10);
+            if (!isNaN(num) && num > 0) {
+              providers[id].contextWindow = num;
+              await this.plugin.saveSettings();
+            }
+          })
+      );
+
+    // 上下文窗口大小
+    new Setting(body)
+      .setName("上下文窗口大小")
+      .setDesc("上下文窗口（token 数），用于计算上下文使用量百分比")
+      .addText((text) =>
+        text
+          .setPlaceholder("自动")
+          .setValue(String(p.contextWindow || this.getDefaultContextWindow(id)))
+          .onChange(async (value) => {
+            const num = parseInt(value, 10);
+            if (!isNaN(num) && num > 0) {
+              providers[id].contextWindow = num;
               await this.plugin.saveSettings();
             }
           })
