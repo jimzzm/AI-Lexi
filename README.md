@@ -28,6 +28,12 @@ Open the chat sidebar from the ribbon icon. Everything works by talking directly
 
 All use the same settings interface — fill API key, pick model, start chatting.
 
+## Privacy & Data Use
+
+- **Ollama (local)** — All data stays on your machine. No external network requests.
+- **Cloud providers** — Your messages and note content are sent to the provider’s API server for processing. This is standard for cloud AI services.
+- **API keys** — Encrypted and stored locally in Obsidian’s settings. Never transmitted to any third party.
+- **No telemetry** — This plugin has no analytics, no phone-home, and no background network activity beyond what you explicitly use (chat requests).
 ## Installation
 
 ### From GitHub Releases (Recommended)
