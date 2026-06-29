@@ -17,7 +17,7 @@ Open the chat sidebar from the ribbon icon. Everything works by talking directly
 
 **Tool Calling** — The AI can read and write your vault files directly. Ask it to find notes, summarize folders, or create new pages.
 
-**CLAUDE.md Support** — Place a \CLAUDE.md\ in your vault root with custom instructions the AI will follow.
+**CLAUDE.md Support** — Place a CLAUDE.md in your vault root with custom instructions the AI will follow.
 
 ## Supported Providers
 
@@ -32,27 +32,29 @@ All use the same settings interface — fill API key, pick model, start chatting
 
 ### From GitHub Releases (Recommended)
 
-1. Download \main.js\, \manifest.json\, \styles.css\ from [Releases](https://github.com/jimzzm/AI-Lexi/releases)
-2. Create \<Your Vault>/.obsidian/plugins/ai-lexi/\ folder
+1. Download main.js, manifest.json, styles.css from [Releases](https://github.com/jimzzm/AI-Lexi/releases)
+2. Create <Your Vault>/.obsidian/plugins/ai-lexi/ folder
 3. Copy the three files in
 4. Enable **AI Lexi** in Obsidian Settings → Community plugins
 5. Configure your provider in the plugin settings
 
 ### From Source
 
-\\ash
+`ash
 cd <Your Vault>/.obsidian/plugins
 git clone https://github.com/jimzzm/AI-Lexi.git
 cd AI-Lexi
 npm install && npm run build
-\
+`
+
 ## Development
 
-\\ash
+`ash
 npm install
 npm run dev    # Watch mode
 npm run build  # Production build
-\
+`
+
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
