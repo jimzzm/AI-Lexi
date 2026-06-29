@@ -718,7 +718,9 @@
   position: absolute;
   left: 100%;
   right: auto;
-  top: 0;
+  bottom: 0;
+  max-height: 50vh;
+  overflow-y: auto;
   min-width: 200px;
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
@@ -868,4 +870,99 @@
   color: var(--text-accent);
   font-size: 11px;
   font-family: var(--font-monospace);
+}
+
+
+/* ===== 上下文使用量显示控件 ===== */
+.context-usage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 2px 4px;
+  margin: 0;
+  cursor: default;
+  position: relative;
+  flex: 1;
+}
+
+.context-usage-hidden {
+  display: none !important;
+}
+
+.context-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-green);
+  flex-shrink: 0;
+}
+
+.context-usage-safe .context-dot {
+  background: var(--color-green);
+}
+
+.context-usage-warn .context-dot {
+  background: var(--color-orange);
+}
+
+.context-usage-danger .context-dot {
+  background: var(--color-red);
+}
+
+.context-bar {
+  width: 60px;
+  height: 6px;
+  background: var(--background-modifier-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.context-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--interactive-accent);
+  transition: width 0.3s ease;
+}
+
+.context-pct {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+  min-width: 28px;
+  text-align: right;
+}
+
+.context-tooltip {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 4px;
+  padding: 4px 8px;
+  background: var(--background-modifier-hover);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-normal);
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.context-usage:hover .context-tooltip {
+  display: block;
+}
+
+.context-usage-safe .context-bar-fill {
+  background: var(--interactive-accent);
+}
+
+.context-usage-warn .context-bar-fill {
+  background: var(--color-orange);
+}
+
+.context-usage-danger .context-bar-fill {
+  background: var(--color-red);
 }
