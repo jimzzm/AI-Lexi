@@ -60,6 +60,7 @@ export class OllamaChatView extends ItemView {
   private ollamaModels: string[] = []; // Ollama 本地模型列表
   private globalCachedSelection: string | null = null; // 编辑器选中文本缓存（防止点击输入框后失焦丢失）
   private selectionPollInterval: number | null = null;
+  private tabWarningShown: boolean = false;
 
 
   private totalUsage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
@@ -543,7 +544,10 @@ export class OllamaChatView extends ItemView {
   /** 创建新 Tab（最多 3 个） */
   private createNewTab(): void {
     if (this.tabs.length >= 3) {
-      this.addStatusMessage("⚠️ 最多 3 个标签页");
+      if (!this.tabWarningShown) {
+        this.tabWarningShown = true;
+        this.addStatusMessage("⚠️ 最多 3 个标签页");
+      }
       return;
     }
 

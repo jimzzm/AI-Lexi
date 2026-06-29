@@ -566,7 +566,7 @@ export class OllamaChatSettingTab extends PluginSettingTab {
       .addTextArea((text) => {
         const ta = text
           .setPlaceholder(id === "doubao" ? "ep-xxxxxxxxxxxx" : "每行输入一个模型 ID")
-          .setValue(id === "doubao" ? "" : p.model)
+          .setValue(p.availableModels && p.availableModels.length > 0 ? p.availableModels.join("\n") : p.model)
           .onChange(async (value) => {
             const lines = value.split('\n').map(s => s.trim()).filter(Boolean);
             providers[id].model = lines[0] || '';
@@ -612,24 +612,7 @@ export class OllamaChatSettingTab extends PluginSettingTab {
           })
       );
 
-    // 上下文窗口大小
-    new Setting(body)
-      .setName("上下文窗口大小")
-      .setDesc("上下文窗口（token 数），用于计算上下文使用量百分比")
-      .addText((text) =>
-        text
-          .setPlaceholder("自动")
-          .setValue(String(p.contextWindow || this.getDefaultContextWindow(id)))
-          .onChange(async (value) => {
-            const num = parseInt(value, 10);
-            if (!isNaN(num) && num > 0) {
-              providers[id].contextWindow = num;
-              await this.plugin.saveSettings();
-            }
-          })
-      );
-
-    // 上下文窗口大小
+    //     // 上下文窗口大小
     new Setting(body)
       .setName("上下文窗口大小")
       .setDesc("上下文窗口（token 数），用于计算上下文使用量百分比")

@@ -718,7 +718,9 @@
   position: absolute;
   left: 100%;
   right: auto;
-  top: 0;
+  bottom: 0;
+  max-height: 50vh;
+  overflow-y: auto;
   min-width: 200px;
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
