@@ -1,41 +1,41 @@
 {
-  "name": "obsidian-ai-lexi",
-  "version": "1.1.0",
-  "description": "Obsidian 侧边栏 AI 多轮对话插件，支持 Ollama / DeepSeek / 小米 mimo",
-  "main": "main.js",
-  "scripts": {
-    "dev": "node esbuild.config.mjs",
-    "build": "node esbuild.config.mjs production",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint \"{src}/**/*.ts\""
-  },
-  "keywords": [
-    "obsidian",
-    "obsidian-plugin",
-    "ollama",
-    "deepseek",
-    "xiaomi",
-    "ai",
-    "chat"
-  ],
-  "author": "zzm",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/zzm/obsidian-ai-lexi"
-  },
-  "bugs": {
-    "url": "https://github.com/zzm/obsidian-ai-lexi/issues"
-  },
-  "homepage": "https://github.com/zzm/obsidian-ai-lexi",
-  "devDependencies": {
-    "@types/node": "^20.11.0",
-    "@typescript-eslint/eslint-plugin": "^6.19.0",
-    "@typescript-eslint/parser": "^6.19.0",
-    "esbuild": "^0.19.11",
-    "eslint": "^8.56.0",
-    "obsidian": "latest",
-    "typescript": "^5.3.3"
-  },
-  "dependencies": {}
+	"name": "obsidian-ai-lexi",
+	"version": "1.1.1",
+	"description": "Obsidian 侧边栏 AI 多轮对话插件，支持 Ollama / DeepSeek / 小米 mimo",
+	"main": "main.js",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "node esbuild.config.mjs production",
+		"typecheck": "tsc --noEmit",
+		"lint": "eslint \"{src}/**/*.ts\""
+	},
+	"keywords": [
+		"obsidian",
+		"obsidian-plugin",
+		"ollama",
+		"deepseek",
+		"xiaomi",
+		"ai",
+		"chat"
+	],
+	"author": "zzm",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/zzm/obsidian-ai-lexi"
+	},
+	"bugs": {
+		"url": "https://github.com/zzm/obsidian-ai-lexi/issues"
+	},
+	"homepage": "https://github.com/zzm/obsidian-ai-lexi",
+	"devDependencies": {
+		"@types/node": "^20.11.0",
+		"@typescript-eslint/eslint-plugin": "^6.19.0",
+		"@typescript-eslint/parser": "^6.19.0",
+		"esbuild": "^0.19.11",
+		"eslint": "^8.56.0",
+		"obsidian": "latest",
+		"typescript": "^5.3.3"
+	},
+	"dependencies": {}
 }
