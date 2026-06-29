@@ -1,75 +1,59 @@
 # AI Lexi
 
-让 AI 直接在 Obsidian 中为你的文档提供优化、整理等操作，支持 Ollama、DeepSeek、火山方舟（豆包）等国产大模型。
+![GitHub release](https://img.shields.io/github/v/release/jimzzm/AI-Lexi)
+![License](https://img.shields.io/github/license/jimzzm/AI-Lexi)
 
 [English](README.md)
 
+AI Lexi 是一款 Obsidian 插件，将 AI 聊天直接嵌入你的侧边栏。不需要装任何命令行工具，不需要折腾环境，配置好 API 密钥就能直接用自然语言和 AI 对话。
+
+## 功能与使用方法
+
+从功能区图标（侧边栏里的机器人图标）打开聊天侧边栏。选定文本或打开笔记，直接用自然语言告诉 AI 你想做什么，它就能读取、写入、编辑和整理你的笔记。**全程不用命令行，对不熟悉代码的人也非常友好。**
+
+**直接编辑** — 选定当前笔记中的一段文字，告诉 AI 帮你修改、优化或翻译。或者描述你想要的效果，AI 会自动处理。
+
+**多标签页和对话** — 最多 3 个并行聊天标签页，每个标签页独立维护对话历史。支持新建对话、恢复历史、压缩上下文。
+
+**工具调用** — AI 可以直接读写你的 Obsidian 笔记文件。让它查找笔记、总结文件夹、创建新页面都可以。
+
+**CLAUDE.md 支持** — 在库目录放一个 \CLAUDE.md\ 文件，写入自定义指令，AI 会遵循这些指令工作。
+
 ## 支持的提供商
 
-Ollama、DeepSeek、小米 MiMo、Kimi、Qwen、GLM、MiniMax、火山方舟（豆包）
+开箱即用 8 个提供商：
+
+- **Ollama**（本地免费）
+- **DeepSeek**、**小米 MiMo**、**Kimi**、**Qwen**、**GLM**、**MiniMax**、**豆包**（火山方舟）
+
+所有提供商使用统一的设置界面 — 填 API 密钥、选模型、开始聊天。
 
 ## 安装
 
-### 方法一：通过 Releases 下载（推荐）
+### 从 GitHub Releases 下载（推荐）
 
-1. 前往 [Releases](https://github.com/jimzzm/AI-Lexi/releases) 页面下载最新版本的 `main.js`、`manifest.json`、`styles.css`
-2. 在你的 Obsidian 仓库下创建文件夹 `<你的仓库>/.obsidian/plugins/ai-lexi/`
-3. 将三个文件复制到该文件夹
+1. 从 [Releases](https://github.com/jimzzm/AI-Lexi/releases) 下载 \main.js\、\manifest.json\、\styles.css2. 在你的 Obsidian 库下创建 \<你的库>/.obsidian/plugins/ai-lexi/\ 文件夹
+3. 把三个文件复制进去
 4. 在 Obsidian 设置 → 第三方插件中启用 **AI Lexi**
-5. 在插件设置中配置 API 地址和密钥
+5. 在插件设置中配置你的提供商
 
-### 方法二：克隆仓库
+### 从源码构建
 
-1. 将仓库克隆到 `<你的仓库>/.obsidian/plugins/ai-lexi/`
-2. 运行 `npm install && npm run build`
-3. 在 Obsidian 设置 → 第三方插件中启用
-
-## 功能
-
-- 多轮对话，自动携带上下文
-- 工具调用：读取和写入笔记文件
-- 自动加载当前笔记上下文
-- 支持 CLAUDE.md 自定义指令
-- 视觉模型：提取笔记中的图片传给 Ollama 视觉模型分析
-- 显存管理：切换模型/新对话时自动释放显存
-- 中文界面
-
-## 网络服务
-
-本插件会与以下远程服务通信以提供 AI 聊天功能。除聊天交互本身所需的数据外，不收集、存储或传输任何其他数据：
-
-- **Ollama**（本地）：连接本地运行的 Ollama 实例，不发起外部网络请求。
-- **DeepSeek API**：向 `api.deepseek.com` 发送聊天消息以获取 AI 回复。
-- **小米 MiMo API**：向小米 MiMo 端点发送聊天消息以获取 AI 回复。
-- **Kimi API**：向 Kimi API 发送聊天消息以获取 AI 回复。
-- **Qwen API（阿里云）**：向 DashScope API 发送聊天消息以获取 AI 回复。
-- **GLM API（智谱 AI）**：向智谱 AI API 发送聊天消息以获取 AI 回复。
-- **MiniMax API**：向 MiniMax API 发送聊天消息以获取 AI 回复。
-- **火山方舟（豆包） API（火山引擎）**：向火山引擎端点发送聊天消息以获取 AI 回复。
-
-所有 API 密钥均存储在本地设备上，不会传输给任何第三方。
-
-## 配置
-
-- Ollama 上下文窗口（num_ctx）可调滑块（2048~131072）
-- 图片分析提示词模板（用于视觉模型）
+\\ash
+cd <你的库>/.obsidian/plugins
+git clone https://github.com/jimzzm/AI-Lexi.git
+cd AI-Lexi
+npm install && npm run build
+\
+然后在 Obsidian 设置 → 第三方插件中启用。
 
 ## 开发
 
-```bash
+\\ash
 npm install
-npm run dev    # 开发模式（监听文件变化）
+npm run dev    # 监听模式
 npm run build  # 生产构建
-```
-
-## 技术栈
-
-- TypeScript + esbuild
-- Obsidian Plugin API
-- OpenAI 兼容格式（DeepSeek、Kimi、GLM、Qwen、MiniMax、火山方舟（豆包）、小米）
-- Ollama 原生 API
-- 动态提供商架构
-
+\
 ## 许可
 
 MIT License。详见 [LICENSE](LICENSE) 文件。

@@ -1,75 +1,58 @@
 # AI Lexi
 
-Let AI optimize, organize, and enhance your documents in the Obsidian sidebar. Supports Ollama, DeepSeek, Doubao (Volcengine Ark), and other LLM providers.
+![GitHub release](https://img.shields.io/github/v/release/jimzzm/AI-Lexi)
+![License](https://img.shields.io/github/license/jimzzm/AI-Lexi)
 
-[中文说明](README_CN.md)
+> 中文版说明请见 [README_CN.md](README_CN.md)
+
+AI Lexi is an Obsidian plugin that brings AI chat directly into your sidebar. No external CLI tools, no complicated setup — just configure your API key and start talking to AI right inside Obsidian.
+
+## Features & Usage
+
+Open the chat sidebar from the ribbon icon. Everything works by talking directly to the AI — tell it to read, write, edit, or organize your notes. No command line needed, no external tools. Just natural language. Friendly for non-coders.
+
+**Direct Editing** — Select text in your current note and ask the AI to rewrite, optimize, or translate it. Or just describe what you want changed and the AI handles it.
+
+**Multi-Tab & Conversations** — Up to 3 parallel chat tabs. Each tab keeps its own history. New conversation, resume, fork, or compact whenever you need.
+
+**Tool Calling** — The AI can read and write your vault files directly. Ask it to find notes, summarize folders, or create new pages.
+
+**CLAUDE.md Support** — Place a \CLAUDE.md\ in your vault root with custom instructions the AI will follow.
 
 ## Supported Providers
 
-Ollama, DeepSeek, Xiaomi MiMo, Kimi, Qwen, GLM, MiniMax, Doubao (Volcengine Ark)
+8 providers out of the box:
+
+- **Ollama** (local, free)
+- **DeepSeek**, **Xiaomi MiMo**, **Kimi**, **Qwen**, **GLM**, **MiniMax**, **Doubao** (cloud)
+
+All use the same settings interface — fill API key, pick model, start chatting.
 
 ## Installation
 
-### Method 1: Download from Releases (Recommended)
+### From GitHub Releases (Recommended)
 
-1. Download the latest `main.js`, `manifest.json`, and `styles.css` from [Releases](https://github.com/jimzzm/AI-Lexi/releases)
-2. Create folder `<Your Vault>/.obsidian/plugins/ai-lexi/`
-3. Copy the three files into that folder
-4. Enable **AI Lexi** in Settings > Community plugins
-5. Configure your API endpoint and key in the plugin settings
+1. Download \main.js\, \manifest.json\, \styles.css\ from [Releases](https://github.com/jimzzm/AI-Lexi/releases)
+2. Create \<Your Vault>/.obsidian/plugins/ai-lexi/\ folder
+3. Copy the three files in
+4. Enable **AI Lexi** in Obsidian Settings → Community plugins
+5. Configure your provider in the plugin settings
 
-### Method 2: Clone and Build
+### From Source
 
-1. Clone this repo into `<Your Vault>/.obsidian/plugins/ai-lexi/`
-2. Run `npm install && npm run build`
-3. Enable in Settings > Community plugins
-
-## Features
-
-- Multi-turn chat with automatic context
-- Tool calling: read and write note files
-- Auto-attach current note as context
-- Support for CLAUDE.md custom instructions
-- Vision models: send note images to Ollama vision models for analysis
-- VRAM management: auto-release memory on model switch or new conversation
-- Chinese UI
-
-## Network Services
-
-This plugin communicates with the following remote services to provide AI chat functionality. No data is collected, stored, or transmitted beyond what is required for the chat interaction:
-
-- **Ollama** (local): Connects to a locally running Ollama instance. No external network requests.
-- **DeepSeek API**: Sends chat messages to `api.deepseek.com` for AI responses.
-- **Xiaomi MiMo API**: Sends chat messages to the Xiaomi MiMo endpoint for AI responses.
-- **Kimi API**: Sends chat messages to the Kimi API for AI responses.
-- **Qwen API (Alibaba Cloud)**: Sends chat messages to the DashScope API for AI responses.
-- **GLM API (Zhipu AI)**: Sends chat messages to the Zhipu AI API for AI responses.
-- **MiniMax API**: Sends chat messages to the MiniMax API for AI responses.
-- **Doubao (Volcengine Ark) API (Volcengine)**: Sends chat messages to the Volcengine endpoint for AI responses.
-
-All API keys are stored locally on your device and are never transmitted to any third party.
-
-## Configuration
-
-- Ollama context window (num_ctx) adjustable slider (2048~131072)
-- Image analysis prompt template (for vision models)
-
+\\ash
+cd <Your Vault>/.obsidian/plugins
+git clone https://github.com/jimzzm/AI-Lexi.git
+cd AI-Lexi
+npm install && npm run build
+\
 ## Development
 
-```bash
+\\ash
 npm install
-npm run dev    # Dev mode (watch)
+npm run dev    # Watch mode
 npm run build  # Production build
-```
-
-## Tech Stack
-
-- TypeScript + esbuild
-- Obsidian Plugin API
-- OpenAI-compatible format (DeepSeek, Kimi, GLM, Qwen, MiniMax, Doubao (Volcengine Ark), Xiaomi)
-- Ollama native API
-- Dynamic provider architecture
-
+\
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
@@ -78,10 +61,3 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 - [Claudian](https://github.com/YishenTu/claudian) — UI design and interaction patterns
 - [Obsidian](https://obsidian.md) — Powerful plugin API
-
-
-## v1.1.0 (2026-06-29)
-- 新增：顶部 tokens 消耗总量显示（圆点 + 进度条 + 百分比）
-- 修复：每轮对话 tokens 消耗显示恢复
-- 修复：DeepSeek 无法对话的问题
-- 优化：顶部工具栏样式调整
