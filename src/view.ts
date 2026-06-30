@@ -1198,13 +1198,38 @@ export class OllamaChatView extends ItemView {
       }
     }
     }
+    await this.getUsage();
     }
   }
 
   /**
    * 云端管道：流式 + 原生 tool_calls + 思考链
    */
-  private async sendCloudMessage(loadingEl: HTMLElement): Promise<void> {
+  
+  /**
+   * 对话完成后获取 tokens 消耗，更新顶栏
+   */
+  private async getUsage(): Promise<void> {
+    try {
+      const result = await ollamaApi.sendRequest(
+        this.conversation.getMessages(),
+        {
+          baseUrl: this.settings.ollamaBaseUrl,
+          model: this.settings.ollamaModel,
+          temperature: this.settings.ollamaTemperature,
+          maxTokens: this.settings.ollamaMaxTokens,
+        }
+      );
+      if (result.success && result.usage) {
+        this.totalUsage.prompt_tokens += result.usage.prompt_tokens;
+        this.totalUsage.completion_tokens += result.usage.completion_tokens;
+        this.totalUsage.total_tokens += result.usage.total_tokens;
+        this.updateContextUsage(this.totalUsage);
+      }
+    } catch(e) { /* 忽略 */ }
+  }
+
+private async sendCloudMessage(loadingEl: HTMLElement): Promise<void> {
     const providerConfig = this.settings.providers[this.currentProvider];
     if (!providerConfig) {
       throw new Error(`未知的提供商: ${this.currentProvider}`);
