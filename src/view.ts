@@ -1262,7 +1262,7 @@ export class OllamaChatView extends ItemView {
         const lastUserMsg = this.conversation.getMessages().filter(m => m.role === "user").pop();
         const userWantsEdit = lastUserMsg && /[编辑修改写入更新添加删除翻译润色改写]|edit|write|update|modify|translate/i.test(lastUserMsg.content);
 
-        const filteredCalls = userWantsEdit
+        const filteredCalls = userWantsEdit || this.currentProvider === "kimi"
           ? toolCallsWithId
           : toolCallsWithId.filter((tc: any) => tc.function?.name !== "write_file");
 
@@ -1394,6 +1394,7 @@ export class OllamaChatView extends ItemView {
 
     if (!done) {
       loadingEl.remove();
+      // ABORTED 状态由 abortController.abort() 触发，无须额外提示
       if (response.success) {
         if (fullContent) {
           // 已显示在流式框中，保存到历史
@@ -1439,7 +1440,12 @@ export class OllamaChatView extends ItemView {
         } catch {}
       } else {
         streamMsgEl.remove();
-        this.addErrorMessage(`❌ ${response.error.code}: ${response.error.message}`);
+        // ABORTED 不显示红框错误，改为状态提示
+        if (response.error?.code === "ABORTED") {
+          this.conversation.addAssistantMessage("⏹️ 对话已中断");
+        } else {
+          this.addErrorMessage(`❌ ${response.error.code}: ${response.error.message}`);
+        }
         if (streamTextEl.textContent?.trim()) {
           this.addMessage("assistant", streamTextEl.textContent);
           this.conversation.addAssistantMessage(streamTextEl.textContent);

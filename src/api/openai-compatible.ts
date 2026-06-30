@@ -1,5 +1,23 @@
 import { Message, ToolCall, UnifiedResponse, ProviderConfig } from "../types";
 
+/** 默认请求超时（毫秒）*/
+const REQUEST_TIMEOUT = 60000;
+
+/**
+ * 将外部 signal 与超时 signal 合并
+ */
+function mergeSignals(signal?: AbortSignal): AbortSignal {
+  // 兼容旧版 Electron：AbortSignal.any() 可能不存在
+  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT);
+  if (!signal) return timeout;
+  if (typeof AbortSignal.any === "function") {
+    return AbortSignal.any([signal, timeout]);
+  }
+  // fallback: 只用外部 signal（timeout 通过 AbortController.race 处理不了，但至少有 ESC 中断能力）
+  return signal;
+}
+
+
 /**
  * OpenAI 兼容 API 的统一适配器
  * 支持所有使用 OpenAI 格式的提供商（DeepSeek、Kimi、GLM、Qwen、MiniMax、豆包、小米）
@@ -12,7 +30,7 @@ import { Message, ToolCall, UnifiedResponse, ProviderConfig } from "../types";
 export async function sendRequest(
   messages: Message[],
   config: ProviderConfig,
-  signal?: AbortSignal
+  _signal?: AbortSignal
 ): Promise<UnifiedResponse> {
   const endpoint = `${config.baseUrl.replace(/\/+$/, "")}/chat/completions`;
 
@@ -37,6 +55,16 @@ export async function sendRequest(
     stream: false,
   };
 
+    // Kimi K2.5/K2.6 不支持 temperature/top_p
+  if (config.id === "kimi") {
+    delete requestBody.temperature;
+    delete requestBody.top_p;
+    // K2.5 始终开启 thinking 不可禁用，不传 thinking 参数
+    if (config.model !== "kimi-k2.5") {
+      requestBody.thinking = { type: "disabled" };
+    }
+  }
+
   // DeepSeek 思考模式支持
   if (config.id === "deepseek" && config.thinkingLevel) {
     requestBody.reasoning_effort = config.thinkingLevel;
@@ -55,11 +83,12 @@ export async function sendRequest(
   }
 
   try {
+    const mergedSignal = mergeSignals(_signal);
     const response = await fetch(endpoint, {
       method: "POST",
       headers,
       body: JSON.stringify(requestBody),
-      signal,
+      signal: mergedSignal,
     });
 
     if (!response.ok) {
@@ -90,7 +119,7 @@ export async function sendRequestWithTools(
   messages: Message[],
   tools: any[],
   config: ProviderConfig,
-  signal?: AbortSignal
+  _signal?: AbortSignal
 ): Promise<UnifiedResponse> {
   const endpoint = `${config.baseUrl.replace(/\/+$/, "")}/chat/completions`;
 
@@ -121,6 +150,16 @@ export async function sendRequestWithTools(
     tool_choice: "auto",
   };
 
+    // Kimi K2.5/K2.6 不支持 temperature/top_p
+  if (config.id === "kimi") {
+    delete requestBody.temperature;
+    delete requestBody.top_p;
+    // K2.5 始终开启 thinking 不可禁用，不传 thinking 参数
+    if (config.model !== "kimi-k2.5") {
+      requestBody.thinking = { type: "disabled" };
+    }
+  }
+
   // DeepSeek 思考模式支持
   if (config.id === "deepseek" && config.thinkingLevel) {
     requestBody.reasoning_effort = config.thinkingLevel;
@@ -138,11 +177,12 @@ export async function sendRequestWithTools(
   }
 
   try {
+    const mergedSignal = mergeSignals(_signal);
     const response = await fetch(endpoint, {
       method: "POST",
       headers,
       body: JSON.stringify(requestBody),
-      signal,
+      signal: mergedSignal,
     });
 
     if (!response.ok) {
@@ -189,6 +229,7 @@ async function handleError(response: Response): Promise<UnifiedResponse> {
   let detail = `HTTP ${response.status}`;
   try {
     const errBody = await response.json();
+    console.error("[AI Lexi] API 错误响应:", response.status, JSON.stringify(errBody));
     if (errBody.error?.message) {
       detail += `: ${errBody.error.message}`;
     } else if (errBody.error) {
@@ -207,7 +248,10 @@ function handleFetchError(err: any): UnifiedResponse {
   if (err.code === "ECONNREFUSED" || err.message?.includes("ECONNREFUSED")) {
     return { success: false, error: { code: "NETWORK_ERROR", message: "无法连接到 API 服务" } };
   }
-  if (err.name === "AbortError" || err.message?.includes("timeout")) {
+  if (err.name === "AbortError") {
+    return { success: false, error: { code: "ABORTED", message: "请求已取消" } };
+  }
+  if (err.message?.includes("timeout")) {
     return { success: false, error: { code: "TIMEOUT", message: "请求超时，请检查网络连接" } };
   }
   return { success: false, error: { code: "UNKNOWN_ERROR", message: err.message || "未知错误" } };
@@ -222,15 +266,24 @@ export async function sendRequestStreaming(
   messages: Message[],
   tools: any[],
   config: ProviderConfig,
-  signal: AbortSignal | undefined,
+  _signal: AbortSignal | undefined,
   callbacks: import("../types").StreamingCallbacks
 ): Promise<UnifiedResponse> {
   const endpoint = `${config.baseUrl.replace(/\/+$/, "")}/chat/completions`;
 
   const requestBody: Record<string, any> = {
     model: config.model,
-    messages: messages.map((m) => {
+    messages: messages.filter((m) => {
+      // 跳过缺失 tool_call_id 的 tool 消息（上游迁移时可能产生）
+      if (m.role === "tool" && !m.tool_call_id) {
+        return false;
+      }
+      return true;
+    }).map((m) => {
       const msg: any = { role: m.role, content: m.content };
+      if (m.role === "tool") {
+        msg.tool_call_id = m.tool_call_id;
+      }
       return msg;
     }),
     tools: tools && tools.length > 0 ? tools : undefined,
@@ -240,6 +293,17 @@ export async function sendRequestStreaming(
     stream: true,
     stream_options: { include_usage: true },
   };
+
+  // Kimi K2.5/K2.6 不支持 temperature/top_p/stream_options
+  if (config.id === "kimi") {
+    delete requestBody.temperature;
+    delete requestBody.top_p;
+    delete requestBody.stream_options;
+    // K2.5 始终开启 thinking 不可禁用
+    if (config.model !== "kimi-k2.5") {
+      requestBody.thinking = { type: "disabled" };
+    }
+  }
 
   // DeepSeek 思考模式支持
   if (config.id === "deepseek" && config.thinkingLevel) {
@@ -257,11 +321,12 @@ export async function sendRequestStreaming(
   }
 
   try {
+    const mergedSignal = mergeSignals(_signal);
     const response = await fetch(endpoint, {
       method: "POST",
       headers,
       body: JSON.stringify(requestBody),
-      signal,
+      signal: mergedSignal,
     });
 
     if (!response.ok) {

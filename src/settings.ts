@@ -11,7 +11,7 @@ export const PROVIDER_MODELS: Record<string, { label: string; models: string[] }
   ollama: { label: "Ollama", models: [] },
   deepseek: { label: "DeepSeek", models: ["deepseek-v4-flash", "deepseek-v4-pro"] },
   xiaomi: { label: "XiaoMIMO", models: ["mimo-v2.5", "mimo-v2-omni", "mimo-v2.5-pro"] },
-  kimi: { label: "Kimi", models: ["kimi-for-coding"] },
+  kimi: { label: "Kimi", models: ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k", "kimi-k2.5", "kimi-k2.6"] },
   qwen: { label: "Qwen", models: ["qwen-plus", "qwen-max", "qwen-turbo"] },
   glm: { label: "GLM", models: ["glm-5.1", "glm-4-plus"] },
   minimax: { label: "MiniMax", models: ["MiniMax-M3"] },
@@ -90,11 +90,11 @@ const CLOUD_PROVIDERS: Record<string, Omit<ProviderConfig, "apiKey" | "enabled">
   },
   kimi: {
     id: "kimi", name: "Kimi",
-    baseUrl: "https://api.kimi.com/coding/v1", model: "kimi-for-coding",
+    baseUrl: "https://api.moonshot.cn/v1", model: "kimi-k2.5",
     temperature: 0.8, maxTokens: 16384,
     contextWindow: 262144,
     authType: "bearer", tokenParam: "max_tokens", supportsVision: false,
-    availableModels: ["kimi-for-coding"],
+    availableModels: ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k", "kimi-k2.5", "kimi-k2.6"],
   },
   qwen: {
     id: "qwen", name: "Qwen",
@@ -133,7 +133,7 @@ const CLOUD_PROVIDERS: Record<string, Omit<ProviderConfig, "apiKey" | "enabled">
 function buildDefaultProviders(): Record<string, ProviderConfig> {
   const result: Record<string, ProviderConfig> = {};
   for (const [id, p] of Object.entries(CLOUD_PROVIDERS)) {
-    result[id] = { ...p, enabled: p.id === "deepseek" || p.id === "xiaomi", apiKey: "" };
+    result[id] = { ...p, enabled: p.id === "deepseek" || p.id === "xiaomi" || p.id === "kimi", apiKey: "" };
   }
   return result;
 }
