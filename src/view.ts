@@ -1079,7 +1079,6 @@ export class OllamaChatView extends ItemView {
         onToken: async (token: string) => {
           fullContent += token;
           this.updateLoadingText(loadingEl, "正在思考...");
-          // 检测到 <tool 开头说明是工具调用，不显示 XML 片段
           if (fullContent.indexOf("<tool") === -1) {
             streamTextEl.empty();
             await MarkdownRenderer.render(this.app, fullContent, streamTextEl, "", this);
@@ -1089,7 +1088,6 @@ export class OllamaChatView extends ItemView {
       }
     );
 
-    // 工具检车：文本解析 <tool_call>
     if (response.success) {
       const toolCalls = this.parseToolCallsFromText(fullContent);
       if (toolCalls && toolCalls.length > 0) {
@@ -1103,7 +1101,7 @@ export class OllamaChatView extends ItemView {
 
         let loopCount = 0;
         let toolLoopUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
-        let currentResponse: UnifiedResponse = {
+        let currentResponse = {
           success: true,
           content: fullContent,
           model: response.model,
@@ -1118,118 +1116,48 @@ export class OllamaChatView extends ItemView {
           }
           this.updateLoadingText(loadingEl, "正在执行工具...");
           await this.handleToolCalls(currentResponse.toolCalls);
-          if (currentResponse.toolCalls?.some((tc: any) => tc?.function?.name === "write_file")) {
+          if (currentResponse.toolCalls.some((tc) => tc?.function?.name === "write_file")) {
             break;
           }
           this.updateLoadingText(loadingEl, `等待 ${this.getProviderName()} 回复...`);
           currentResponse = await this.sendRequestWithTools();
-          // 累加工具循环的 token 用量
           if (currentResponse.usage) {
             toolLoopUsage.prompt_tokens += currentResponse.usage.prompt_tokens;
             toolLoopUsage.completion_tokens += currentResponse.usage.completion_tokens;
             toolLoopUsage.total_tokens += currentResponse.usage.total_tokens;
           }
         }
+      }
+    }
+
     loadingEl.remove();
 
     if (response.success) {
-      // 显示单轮 token 消耗
-      const showRoundUsage = (usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | undefined) => {
-        if (usage) {
-          const u = usage;
-          const pk = u.prompt_tokens >= 1000 ? (u.prompt_tokens / 1000).toFixed(1) + "k" : String(u.prompt_tokens);
-          const ck = u.completion_tokens >= 1000 ? (u.completion_tokens / 1000).toFixed(1) + "k" : String(u.completion_tokens);
-          this.scrollToBottom();
-          this.addStatusMessage(`📊 上下文: ↑${pk} ↓${ck} (${u.total_tokens} tokens)`);
-          // 累加到总消耗量
-          this.totalUsage.prompt_tokens += u.prompt_tokens;
-          this.totalUsage.completion_tokens += u.completion_tokens;
-          this.totalUsage.total_tokens += u.total_tokens;
-          this.updateContextUsage(this.totalUsage);
-        }
-      };
-
-      if (hasToolCalls) {
-        this.addMessage("assistant", "✅ 已完成编辑。");
-        this.conversation.addAssistantMessage("✅ 已完成编辑。");
-        // 合并流式响应的 usage 和工具循环中的 usage
-        var mergedUsage = {
-          prompt_tokens: (response.usage?.prompt_tokens || 0) + toolLoopUsage.prompt_tokens,
-          completion_tokens: (response.usage?.completion_tokens || 0) + toolLoopUsage.completion_tokens,
-          total_tokens: (response.usage?.total_tokens || 0) + toolLoopUsage.total_tokens,
-        };
-        showRoundUsage(mergedUsage);
-      } else {
+      if (!hasToolCalls) {
         const cleanContent = this.stripToolCallText(fullContent);
         if (cleanContent) {
           this.conversation.addAssistantMessage(cleanContent);
-        } else {
-          if (!streamMsgEl.isConnected || !streamTextEl.textContent?.trim()) {
-            streamMsgEl.remove();
-          }
-          this.addStatusMessage(`⚠️ ${this.getProviderName()} 返回了空内容`);
         }
-        // 优先用流式响应中的 usage，没有则额外请求
-        if (response.usage) {
-          showRoundUsage(response.usage);
-        } else {
-          try {
-            const usageResult = await ollamaApi.sendRequest(
-              this.conversation.getMessages(),
-              {
-                baseUrl: this.settings.ollamaBaseUrl,
-                model: this.settings.ollamaModel,
-                temperature: this.settings.ollamaTemperature,
-                maxTokens: this.settings.ollamaMaxTokens,
-              }
-            );
-            if (usageResult.success && usageResult.usage) {
-              showRoundUsage(usageResult.usage);
-            }
-          } catch {}
-        }
+      } else {
+        this.addMessage("assistant", "已完成编辑。");
+        this.conversation.addAssistantMessage("已完成编辑。");
+      }
+      const usage = response.usage;
+      if (usage) {
+        this.totalUsage.prompt_tokens += usage.prompt_tokens;
+        this.totalUsage.completion_tokens += usage.completion_tokens;
+        this.totalUsage.total_tokens += usage.total_tokens;
+        this.updateContextUsage(this.totalUsage);
       }
     } else {
       streamMsgEl.remove();
-      this.addErrorMessage(`❌ ${response.error.code}: ${response.error.message}`);
+      this.addErrorMessage(`错误: ${response.error.code}: ${response.error.message}`);
       if (streamTextEl.textContent?.trim()) {
         this.addMessage("assistant", streamTextEl.textContent);
         this.conversation.addAssistantMessage(streamTextEl.textContent);
       }
     }
-    }
-    await this.getUsage();
-    }
-  }
-
-  /**
-   * 云端管道：流式 + 原生 tool_calls + 思考链
-   */
-  
-  /**
-   * 对话完成后获取 tokens 消耗，更新顶栏
-   */
-  private async getUsage(): Promise<void> {
-    try {
-      const result = await ollamaApi.sendRequest(
-        this.conversation.getMessages(),
-        {
-          baseUrl: this.settings.ollamaBaseUrl,
-          model: this.settings.ollamaModel,
-          temperature: this.settings.ollamaTemperature,
-          maxTokens: this.settings.ollamaMaxTokens,
-        }
-      );
-      if (result.success && result.usage) {
-        this.totalUsage.prompt_tokens += result.usage.prompt_tokens;
-        this.totalUsage.completion_tokens += result.usage.completion_tokens;
-        this.totalUsage.total_tokens += result.usage.total_tokens;
-        this.updateContextUsage(this.totalUsage);
-      }
-    } catch(e) { /* 忽略 */ }
-  }
-
-private async sendCloudMessage(loadingEl: HTMLElement): Promise<void> {
+  }private async sendCloudMessage(loadingEl: HTMLElement): Promise<void> {
     const providerConfig = this.settings.providers[this.currentProvider];
     if (!providerConfig) {
       throw new Error(`未知的提供商: ${this.currentProvider}`);
