@@ -24,7 +24,7 @@ interface LexiTab {
   notePath: string | null;
   historyPanelEl: HTMLElement; // 历史列表面板
   title: string;               // 对话自动标题（空则为新对话）
-
+  totalUsage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
 }
 
 export const VIEW_TYPE_OLLAMA_CHAT = "ollama-chat-view";
@@ -597,7 +597,7 @@ export class OllamaChatView extends ItemView {
     const file = this.plugin.getActiveFile();
     const notePath = file instanceof TFile ? file.path : null;
 
-    const tab: LexiTab = { id: tabId, convId, conversation, messagesEl, inputEl, contentEl, navRowTopEl, navRowBottomEl, fileChipEl, notePath, historyPanelEl, title: "" };
+    const tab: LexiTab = { id: tabId, convId, conversation, messagesEl, inputEl, contentEl, navRowTopEl, navRowBottomEl, fileChipEl, notePath, historyPanelEl, title: "", totalUsage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 } };
     this.tabs.push(tab);
 
     // 开新 Tab 时卸载当前 Ollama 模型，释放显存
@@ -641,6 +641,9 @@ export class OllamaChatView extends ItemView {
     // 将共享控件移到当前 Tab 的对应占位中
     this.activeTab.navRowTopEl.appendChild(this.navRowTop);
     this.activeTab.navRowBottomEl.appendChild(this.navRowBottom);
+    // 恢复该 Tab 的 usage 数据
+    this.totalUsage = this.activeTab.totalUsage;
+    this.updateContextUsage(this.totalUsage);
 
     this.refreshTabBar();
     this.updateFileChip();
@@ -1062,6 +1065,28 @@ export class OllamaChatView extends ItemView {
     const streamTextEl = streamContentEl.createDiv({ cls: "message-text-block" });
     this.scrollToBottom();
 
+    // 流式消息添加复制按钮
+    const copyStreamBtn = streamContentEl.createSpan({ cls: "user-msg-action-btn" });
+    copyStreamBtn.style.cssFloat = "right";
+    setIcon(copyStreamBtn, "copy");
+    copyStreamBtn.setAttr("aria-label", "复制消息");
+    let copyTimer = 0;
+    copyStreamBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const text = fullContent || streamTextEl.textContent || "";
+      navigator.clipboard.writeText(text).then(() => {
+        if (copyTimer) window.clearTimeout(copyTimer);
+        copyStreamBtn.empty();
+        copyStreamBtn.setText("已复制");
+        copyStreamBtn.addClass("copied");
+        copyTimer = window.setTimeout(() => {
+          copyStreamBtn.empty();
+          setIcon(copyStreamBtn, "copy");
+          copyStreamBtn.removeClass("copied");
+          copyTimer = 0;
+        }, 1500);
+      });
+    });
     let fullContent = "";
     let hasToolCalls = false;
 
@@ -1174,6 +1199,28 @@ export class OllamaChatView extends ItemView {
     const streamTextEl = streamContentEl.createDiv({ cls: "message-text-block" });
     this.scrollToBottom();
 
+    // 流式消息添加复制按钮
+    const copyStreamBtn = streamContentEl.createSpan({ cls: "user-msg-action-btn" });
+    copyStreamBtn.style.cssFloat = "right";
+    setIcon(copyStreamBtn, "copy");
+    copyStreamBtn.setAttr("aria-label", "复制消息");
+    let copyTimer = 0;
+    copyStreamBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const text = fullContent || streamTextEl.textContent || "";
+      navigator.clipboard.writeText(text).then(() => {
+        if (copyTimer) window.clearTimeout(copyTimer);
+        copyStreamBtn.empty();
+        copyStreamBtn.setText("已复制");
+        copyStreamBtn.addClass("copied");
+        copyTimer = window.setTimeout(() => {
+          copyStreamBtn.empty();
+          setIcon(copyStreamBtn, "copy");
+          copyStreamBtn.removeClass("copied");
+          copyTimer = 0;
+        }, 1500);
+      });
+    });
     let fullContent = "";
     let done = false; // 标记是否已完成处理（避免双重保存）
 
@@ -2199,6 +2246,8 @@ export class OllamaChatView extends ItemView {
     } else {
       this.contextUsageEl.addClass("context-usage-safe");
     }
+    // 同步到当前 Tab
+    if (this.tabs[this.activeTabIndex]) this.tabs[this.activeTabIndex].totalUsage = { ...this.totalUsage };
   }
 
   /**

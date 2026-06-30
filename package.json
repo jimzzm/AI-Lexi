@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-ai-lexi",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"description": "Obsidian 侧边栏 AI 多轮对话插件，支持 Ollama / DeepSeek / 小米 mimo",
 	"main": "main.js",
 	"scripts": {
